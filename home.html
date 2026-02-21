@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaxFlow NG — Nigerian Tax Compliance</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0f0e0b;
+  --paper: #faf9f6;
+  --cream: #f4f2eb;
+  --warm: #ede9de;
+  --gold: #c8952a;
+  --gold-light: #f0c96b;
+  --gold-pale: #fdf6e3;
+  --green: #1a6b4a;
+  --green-light: #d4eddf;
+  --red: #b83232;
+  --red-light: #fde8e8;
+  --blue: #1e4d8c;
+  --blue-light: #dce8f8;
+  --text: #2c2a24;
+  --text-mid: #6b6560;
+  --text-dim: #9e9990;
+  --border: #ddd9cf;
+  --shadow: 0 1px 3px rgba(15,14,11,0.08), 0 4px 16px rgba(15,14,11,0.04);
+  --shadow-lg: 0 8px 32px rgba(15,14,11,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ─── LAYOUT ─── */
+.shell { display:flex; height:100vh; overflow:hidden; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar::before {
+  content:'';
+  position:absolute;
+  top:-80px; right:-80px;
+  width:200px; height:200px;
+  background: radial-gradient(circle, rgba(200,149,42,0.15) 0%, transparent 70%);
+  pointer-events:none;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.logo-mark {
+  display:flex; align-items:center; gap:10px;
+}
+
+.logo-symbol {
+  width:34px; height:34px;
+  background: var(--gold);
+  border-radius: 8px;
+  display:flex; align-items:center; justify-content:center;
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  flex-shrink:0;
+}
+
+.logo-text {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+.logo-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+}
+
+.nav-section {
+  margin-bottom: 24px;
+}
+
+.nav-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.25);
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: rgba(255,255,255,0.5);
+  font-size: 13.5px;
+  font-weight: 400;
+  position:relative;
+}
+
+.nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+
+.nav-item.active {
+  background: rgba(200,149,42,0.15);
+  color: var(--gold-light);
+}
+
+.nav-item.active::before {
+  content:'';
+  position:absolute;
+  left:0; top:20%; bottom:20%;
+  width:3px;
+  background: var(--gold);
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-icon { font-size:15px; width:18px; text-align:center; flex-shrink:0; }
+
+.nav-badge {
+  margin-left:auto;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align:center;
+}
+
+.sidebar-footer {
+  padding: 16px 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.user-card {
+  display:flex; align-items:center; gap:10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor:pointer;
+  transition: background 0.15s;
+}
+
+.user-card:hover { background: rgba(255,255,255,0.06); }
+
+.user-avatar {
+  width:32px; height:32px; border-radius:50%;
+  background: var(--gold);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:600; color:var(--ink);
+  flex-shrink:0;
+}
+
+.user-name { font-size:13px; color:rgba(255,255,255,0.8); font-weight:500; }
+.user-role { font-size:11px; color:rgba(255,255,255,0.3); }
+
+/* ─── MAIN ─── */
+.main {
+  flex:1; display:flex; flex-direction:column;
+  overflow:hidden; background: var(--paper);
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  height:60px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center;
+  padding: 0 28px;
+  gap: 16px;
+  flex-shrink:0;
+}
+
+.topbar-title {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  flex:1;
+}
+
+.topbar-actions { display:flex; align-items:center; gap:10px; }
+
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor:pointer;
+  border:none;
+  transition: all 0.15s;
+}
+
+.btn-primary { background: var(--ink); color:#fff; }
+.btn-primary:hover { background: #2a2820; transform:translateY(-1px); box-shadow:var(--shadow); }
+
+.btn-outline {
+  background:transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { background: var(--cream); border-color: #c5c0b5; }
+
+.btn-gold { background: var(--gold); color:var(--ink); }
+.btn-gold:hover { background: #d4a030; transform:translateY(-1px); }
+
+.btn-sm { padding:6px 12px; font-size:12px; }
+
+/* ─── CONTENT ─── */
+.content {
+  flex:1; overflow-y:auto; padding:28px;
+}
+
+/* ─── PAGES ─── */
+.page { display:none; animation: fadeIn 0.25s ease; }
+.page.active { display:block; }
+
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(8px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* ─── STATS GRID ─── */
+.stats-grid {
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:16px;
+  margin-bottom:24px;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor:default;
+}
+
+.stat-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+
+.stat-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+
+.stat-icon {
+  width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+}
+
+.stat-change {
+  font-size:11px; font-weight:500;
+  padding:2px 8px; border-radius:20px;
+}
+
+.stat-change.up { color: var(--green); background: var(--green-light); }
+.stat-change.down { color: var(--red); background: var(--red-light); }
+
+.stat-value {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height:1;
+  margin-bottom:4px;
+}
+
+.stat-label { font-size:12px; color:var(--text-dim); }
+
+/* ─── GRID 2 ─── */
+.grid-2 { display:grid; grid-template-columns:1.5fr 1fr; gap:16px; margin-bottom:24px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+
+/* ─── CARD ─── */
+.card {
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+
+.card-header {
+  padding:18px 20px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+
+.card-title {
+  font-family:'Fraunces',serif;
+  font-size:15px; font-weight:600;
+  color:var(--ink);
+}
+
+.card-body { padding:0; }
+
+/* ─── TABLE ─── */
+.table { width:100%; border-collapse:collapse; }
+
+.table th {
+  text-align:left;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  color:var(--text-dim);
+  padding:10px 20px;
+  background:var(--cream);
+  font-weight:500;
+  border-bottom:1px solid var(--border);
+}
+
+.table td {
+  padding:13px 20px;
+  border-bottom:1px solid #f0ede6;
+  font-size:13.5px;
+  vertical-align:middle;
+}
+
+.table tr:last-child td { border-bottom:none; }
+.table tr:hover td { background:var(--gold-pale); }
+
+/* ─── BADGES ─── */
+.badge {
+  display:inline-flex; align-items:center;
+  padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:500;
+}
+
+.badge-paid { background:var(--green-light); color:var(--green); }
+.badge-pending { background:#fff3cd; color:#856404; }
+.badge-overdue { background:var(--red-light); color:var(--red); }
+.badge-draft { background:var(--warm); color:var(--text-mid); }
+.badge-partial { background:var(--blue-light); color:var(--blue); }
+
+/* ─── CHART ─── */
+.chart-area {
+  padding:20px;
+  height:180px;
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+}
+
+.bar-wrap { flex:1; display:flex;flex-direction:column;align-items:center;gap:6px; }
+
+.bar {
+  width:100%;
+  border-radius:6px 6px 0 0;
+  background:var(--gold);
+  opacity:0.85;
+  min-height:4px;
+  transition:all 0.3s;
+  cursor:pointer;
+  position:relative;
+}
+
+.bar:hover { opacity:1; }
+
+.bar-label { font-size:10px; color:var(--text-dim); }
+.bar-val { font-size:10px; color:var(--text-mid); font-weight:500; }
+
+/* ─── QUICK ACTIONS ─── */
+.quick-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:16px; }
+
+.quick-btn {
+  display:flex; align-items:center; gap:10px;
+  padding:14px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--paper);
+  cursor:pointer;
+  transition:all 0.15s;
+  text-align:left;
+}
+
+.quick-btn:hover { background:#fff; border-color:var(--gold); box-shadow:var(--shadow); }
+
+.quick-icon {
+  width:36px;height:36px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px; flex-shrink:0;
+}
+
+.quick-text { font-size:12.5px; font-weight:500; color:var(--ink); }
+.quick-sub { font-size:11px; color:var(--text-dim); }
+
+/* ─── FORM ─── */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-full { grid-column:1/-1; }
+
+.form-group { display:flex; flex-direction:column; gap:6px; }
+
+.form-label {
+  font-size:12px; font-weight:500;
+  color:var(--text-mid); text-transform:uppercase;
+  letter-spacing:0.3px;
+}
+
+.form-input {
+  width:100%;
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;
+  color:var(--text);
+  background:#fff;
+  outline:none;
+  transition:border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-input:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(200,149,42,0.12); }
+
+select.form-input { cursor:pointer; }
+
+/* ─── LINE ITEMS ─── */
+.line-items { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+
+.li-header {
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 36px;
+  gap:8px; padding:10px 14px;
+  background:var(--cream);
+  font-size:11px; text-transform:uppercase;
+  letter-spacing:0.4px; color:var(--text-dim);
+  border-bottom:1px solid var(--border);
+}
+
+.li-row {
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 36px;
+  gap:8px; padding:8px 14px;
+  border-bottom:1px solid #f0ede6;
+  align-items:center;
+}
+
+.li-row:last-child { border-bottom:none; }
+
+.li-input {
+  width:100%; padding:7px 10px;
+  border:1px solid transparent;
+  border-radius:6px;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px; color:var(--text);
+  background:transparent;
+  outline:none;
+  transition:all 0.15s;
+}
+
+.li-input:focus { border-color:var(--gold); background:#fff; box-shadow:0 0 0 3px rgba(200,149,42,0.08); }
+
+.li-del {
+  width:28px;height:28px; border-radius:6px;
+  border:none; background:transparent;
+  color:var(--text-dim); cursor:pointer; font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+}
+.li-del:hover { background:var(--red-light); color:var(--red); }
+
+/* ─── SUMMARY BOX ─── */
+.summary-box {
+  background:var(--cream); border:1px solid var(--border);
+  border-radius:10px; padding:18px;
+}
+
+.summary-row {
+  display:flex; justify-content:space-between;
+  align-items:center;
+  padding:6px 0;
+  font-size:13.5px;
+}
+
+.summary-row.total {
+  border-top:2px solid var(--ink);
+  margin-top:10px; padding-top:14px;
+  font-family:'Fraunces',serif;
+  font-size:18px; font-weight:700;
+}
+
+/* ─── ACTIVITY ─── */
+.activity-list { padding:0; }
+
+.activity-item {
+  display:flex; align-items:flex-start; gap:12px;
+  padding:14px 20px;
+  border-bottom:1px solid #f0ede6;
+}
+
+.activity-item:last-child { border-bottom:none; }
+
+.activity-dot {
+  width:8px; height:8px; border-radius:50%;
+  flex-shrink:0; margin-top:5px;
+}
+
+.activity-text { font-size:13px; color:var(--text); line-height:1.5; }
+.activity-time { font-size:11px; color:var(--text-dim); margin-top:2px; }
+
+/* ─── CUSTOMER CARDS ─── */
+.customer-list { padding:4px 0; }
+
+.customer-row {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 20px;
+  border-bottom:1px solid #f0ede6;
+  cursor:pointer; transition:background 0.12s;
+}
+
+.customer-row:hover { background:var(--gold-pale); }
+.customer-row:last-child { border-bottom:none; }
+
+.cust-avatar {
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:600;
+  flex-shrink:0;
+}
+
+.cust-name { font-size:13.5px; font-weight:500; color:var(--ink); }
+.cust-email { font-size:11.5px; color:var(--text-dim); }
+.cust-amount { font-size:13px; font-weight:600; color:var(--green); margin-left:auto; }
+
+/* ─── DOCUMENT UPLOAD ─── */
+.upload-zone {
+  border:2px dashed var(--border);
+  border-radius:12px; padding:48px 32px;
+  text-align:center; cursor:pointer;
+  transition:all 0.2s;
+  background:#fff;
+}
+
+.upload-zone:hover {
+  border-color:var(--gold);
+  background:var(--gold-pale);
+}
+
+.upload-icon { font-size:48px; margin-bottom:16px; opacity:0.5; }
+.upload-title { font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:8px; }
+.upload-sub { font-size:13px; color:var(--text-dim); }
+
+/* ─── EXTRACTED DATA ─── */
+.extracted-panel {
+  background:var(--green-light);
+  border:1px solid #b2d8c4;
+  border-radius:10px; padding:18px;
+  margin-top:20px;
+}
+
+.extracted-title { font-size:13px; font-weight:600; color:var(--green); margin-bottom:12px; }
+
+.extracted-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.ext-item { background:#fff; border-radius:8px; padding:12px; }
+.ext-key { font-size:10px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim); margin-bottom:4px; }
+.ext-val { font-size:13px; font-weight:500; color:var(--ink); }
+
+/* ─── ANALYTICS ─── */
+.analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+.donut-wrap { display:flex; align-items:center; justify-content:center; padding:24px; }
+
+.legend-list { padding:16px 20px; }
+.legend-item { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:13px; }
+.legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+.legend-label { flex:1; color:var(--text-mid); }
+.legend-val { font-weight:600; color:var(--ink); }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(15,14,11,0.5);
+  z-index:100; align-items:center; justify-content:center;
+  animation:fadeIn 0.2s ease;
+}
+
+.modal-overlay.open { display:flex; }
+
+.modal {
+  background:#fff; border-radius:16px;
+  width:480px; max-width:90vw;
+  box-shadow:var(--shadow-lg);
+  animation:slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform:translateY(20px); opacity:0; }
+  to { transform:translateY(0); opacity:1; }
+}
+
+.modal-header {
+  padding:22px 24px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+
+.modal-title { font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.modal-close { background:none; border:none; cursor:pointer; font-size:20px; color:var(--text-dim); padding:4px; border-radius:6px; }
+.modal-close:hover { background:var(--cream); color:var(--ink); }
+.modal-body { padding:24px; }
+.modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+
+/* ─── NOTIFICATION TOAST ─── */
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  background:var(--ink); color:#fff;
+  padding:14px 18px; border-radius:10px;
+  font-size:13px; max-width:300px;
+  box-shadow:var(--shadow-lg);
+  display:flex; align-items:center; gap:10px;
+  z-index:200;
+  transform:translateY(80px); opacity:0;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.toast.show { transform:translateY(0); opacity:1; }
+.toast-icon { font-size:18px; }
+
+/* ─── MISC ─── */
+.flex { display:flex; }
+.gap-2 { gap:8px; }
+.gap-3 { gap:12px; }
+.items-center { align-items:center; }
+.justify-between { justify-content:space-between; }
+.ml-auto { margin-left:auto; }
+.mb-4 { margin-bottom:16px; }
+.mb-6 { margin-bottom:24px; }
+.text-dim { color:var(--text-dim); font-size:12px; }
+.font-serif { font-family:'Fraunces',serif; }
+.font-bold { font-weight:600; }
+
+/* ─── SEARCH ─── */
+.search-wrap { position:relative; }
+.search-input {
+  padding:9px 14px 9px 38px;
+  border:1px solid var(--border);
+  border-radius:8px; font-family:'DM Sans',sans-serif;
+  font-size:13px; color:var(--text);
+  background:var(--cream); outline:none;
+  width:220px; transition:all 0.15s;
+}
+.search-input:focus { border-color:var(--gold); background:#fff; box-shadow:0 0 0 3px rgba(200,149,42,0.1); }
+.search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%); font-size:14px; color:var(--text-dim); }
+
+/* ─── EMPTY STATE ─── */
+.empty-state { text-align:center; padding:60px 32px; }
+.empty-icon { font-size:56px; margin-bottom:16px; opacity:0.35; }
+.empty-title { font-family:'Fraunces',serif; font-size:20px; font-weight:600; margin-bottom:8px; color:var(--ink); }
+.empty-sub { font-size:13px; color:var(--text-dim); margin-bottom:24px; }
+
+/* ─── AUTH PAGES ─── */
+.auth-shell {
+  min-height:100vh; display:flex; align-items:center;
+  justify-content:center; background:var(--cream);
+}
+
+.auth-card {
+  width:420px; background:#fff; border:1px solid var(--border);
+  border-radius:16px; padding:40px; box-shadow:var(--shadow-lg);
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ─── PAGE HEADER ─── */
+.page-header { margin-bottom:24px; }
+.page-title { font-family:'Fraunces',serif; font-size:26px; font-weight:700; color:var(--ink); }
+.page-sub { font-size:13px; color:var(--text-dim); margin-top:4px; }
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-symbol">₦</div>
+        <div>
+          <div class="logo-text">TaxFlow NG</div>
+          <div class="logo-sub">Tax Compliance</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <div class="nav-item active" onclick="showPage('dashboard', this)">
+          <span class="nav-icon">⬛</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('invoices', this)">
+          <span class="nav-icon">🧾</span> Invoices
+          <span class="nav-badge">4</span>
+        </div>
+        <div class="nav-item" onclick="showPage('customers', this)">
+          <span class="nav-icon">👥</span> Customers
+        </div>
+        <div class="nav-item" onclick="showPage('products', this)">
+          <span class="nav-icon">📦</span> Products
+        </div>
+        <div class="nav-item" onclick="showPage('payments', this)">
+          <span class="nav-icon">💳</span> Payments
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Tools</div>
+        <div class="nav-item" onclick="showPage('documents', this)">
+          <span class="nav-icon">📄</span> Documents
+        </div>
+        <div class="nav-item" onclick="showPage('analytics', this)">
+          <span class="nav-icon">📊</span> Analytics
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Account</div>
+        <div class="nav-item" onclick="showPage('settings', this)">
+          <span class="nav-icon">⚙️</span> Settings
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar">AO</div>
+        <div>
+          <div class="user-name">Adebayo Okonkwo</div>
+          <div class="user-role">Business Owner</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions" id="topbar-actions">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" placeholder="Search..." />
+        </div>
+        <button class="btn btn-gold" onclick="showModal('new-invoice-modal')">+ New Invoice</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-top">
+              <div class="stat-icon" style="background:#fff3d4;">💰</div>
+              <span class="stat-change up">↑ 12%</span>
+            </div>
+            <div class="stat-value">₦2.4M</div>
+            <div class="stat-label">Total Revenue</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top">
+              <div class="stat-icon" style="background:#fde8e8;">📋</div>
+              <span class="stat-change down">↑ 3</span>
+            </div>
+            <div class="stat-value">₦485K</div>
+            <div class="stat-label">Overdue Amount</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top">
+              <div class="stat-icon" style="background:#dce8f8;">🧾</div>
+              <span class="stat-change up">↑ 8%</span>
+            </div>
+            <div class="stat-value">47</div>
+            <div class="stat-label">Total Invoices</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top">
+              <div class="stat-icon" style="background:#d4eddf;">👥</div>
+              <span class="stat-change up">+5</span>
+            </div>
+            <div class="stat-value">24</div>
+            <div class="stat-label">Active Customers</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Revenue Chart -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Revenue Overview</span>
+              <span class="text-dim">Last 6 months</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-area" id="chart-area"></div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Quick Actions</span>
+            </div>
+            <div class="card-body">
+              <div class="quick-actions">
+                <div class="quick-btn" onclick="showPage('invoices',null);showPage('new-invoice',null)">
+                  <div class="quick-icon" style="background:#fff3d4;">🧾</div>
+                  <div>
+                    <div class="quick-text">Create Invoice</div>
+                    <div class="quick-sub">Bill a customer</div>
+                  </div>
+                </div>
+                <div class="quick-btn" onclick="showPage('customers',null)">
+                  <div class="quick-icon" style="background:#dce8f8;">👤</div>
+                  <div>
+                    <div class="quick-text">Add Customer</div>
+                    <div class="quick-sub">New client</div>
+                  </div>
+                </div>
+                <div class="quick-btn" onclick="showPage('documents',null)">
+                  <div class="quick-icon" style="background:#d4eddf;">📥</div>
+                  <div>
+                    <div class="quick-text">Upload Receipt</div>
+                    <div class="quick-sub">AI extraction</div>
+                  </div>
+                </div>
+                <div class="quick-btn" onclick="showPage('analytics',null)">
+                  <div class="quick-icon" style="background:#f3e8ff;">📊</div>
+                  <div>
+                    <div class="quick-text">View Reports</div>
+                    <div class="quick-sub">Analytics</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Recent Invoices -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Recent Invoices</span>
+              <button class="btn btn-outline btn-sm" onclick="showPage('invoices', document.querySelector('[onclick*=invoices]'))">View all</button>
+            </div>
+            <div class="card-body">
+              <table class="table">
+                <thead><tr>
+                  <th>Invoice</th><th>Customer</th><th>Amount</th><th>Status</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td class="font-bold">#INV-047</td><td>Dangote Foods Ltd</td><td class="font-bold">₦185,000</td><td><span class="badge badge-paid">Paid</span></td></tr>
+                  <tr><td class="font-bold">#INV-046</td><td>Zenith Traders</td><td class="font-bold">₦92,500</td><td><span class="badge badge-pending">Pending</span></td></tr>
+                  <tr><td class="font-bold">#INV-045</td><td>Lagos Grocers</td><td class="font-bold">₦340,000</td><td><span class="badge badge-overdue">Overdue</span></td></tr>
+                  <tr><td class="font-bold">#INV-044</td><td>Abuja Mart</td><td class="font-bold">₦67,200</td><td><span class="badge badge-partial">Partial</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Activity Feed -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Recent Activity</span>
+            </div>
+            <div class="card-body activity-list">
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--green)"></div>
+                <div>
+                  <div class="activity-text">Payment received from <strong>Dangote Foods Ltd</strong> — ₦185,000</div>
+                  <div class="activity-time">2 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--gold)"></div>
+                <div>
+                  <div class="activity-text">Invoice <strong>#INV-046</strong> sent to Zenith Traders</div>
+                  <div class="activity-time">5 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--red)"></div>
+                <div>
+                  <div class="activity-text">Invoice <strong>#INV-045</strong> is 7 days overdue</div>
+                  <div class="activity-time">1 day ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--blue)"></div>
+                <div>
+                  <div class="activity-text">Document uploaded: <strong>Receipt_Nov24.pdf</strong> — AI extracted ₦45,200</div>
+                  <div class="activity-time">2 days ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot" style="background:var(--green)"></div>
+                <div>
+                  <div class="activity-text">New customer <strong>Kano Distributors</strong> added</div>
+                  <div class="activity-time">3 days ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ INVOICES ═══ -->
+      <div class="page" id="page-invoices">
+        <div class="flex items-center justify-between mb-6">
+          <div class="page-header" style="margin:0">
+            <div class="page-title">Invoices</div>
+            <div class="page-sub">47 total invoices</div>
+          </div>
+          <button class="btn btn-gold" onclick="showPage('new-invoice', null)">+ Create Invoice</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="flex gap-2">
+              <button class="btn btn-primary btn-sm">All</button>
+              <button class="btn btn-outline btn-sm">Draft</button>
+              <button class="btn btn-outline btn-sm">Pending</button>
+              <button class="btn btn-outline btn-sm">Paid</button>
+              <button class="btn btn-outline btn-sm">Overdue</button>
+            </div>
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input class="search-input" placeholder="Search invoices..." />
+            </div>
+          </div>
+          <div class="card-body">
+            <table class="table">
+              <thead><tr>
+                <th>Invoice #</th><th>Customer</th><th>Issue Date</th><th>Due Date</th><th>Amount</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="font-bold">#INV-047</td>
+                  <td>Dangote Foods Ltd</td>
+                  <td class="text-dim">Nov 15, 2024</td>
+                  <td class="text-dim">Dec 15, 2024</td>
+                  <td class="font-bold">₦185,000</td>
+                  <td><span class="badge badge-paid">Paid</span></td>
+                  <td><button class="btn btn-outline btn-sm" onclick="showPage('invoice-detail',null)">View</button></td>
+                </tr>
+                <tr>
+                  <td class="font-bold">#INV-046</td>
+                  <td>Zenith Traders</td>
+                  <td class="text-dim">Nov 10, 2024</td>
+                  <td class="text-dim">Dec 10, 2024</td>
+                  <td class="font-bold">₦92,500</td>
+                  <td><span class="badge badge-pending">Pending</span></td>
+                  <td><button class="btn btn-outline btn-sm" onclick="showPage('invoice-detail',null)">View</button></td>
+                </tr>
+                <tr>
+                  <td class="font-bold">#INV-045</td>
+                  <td>Lagos Grocers</td>
+                  <td class="text-dim">Oct 28, 2024</td>
+                  <td class="text-dim">Nov 28, 2024</td>
+                  <td class="font-bold">₦340,000</td>
+                  <td><span class="badge badge-overdue">Overdue</span></td>
+                  <td><button class="btn btn-outline btn-sm" onclick="showPage('invoice-detail',null)">View</button></td>
+                </tr>
+                <tr>
+                  <td class="font-bold">#INV-044</td>
+                  <td>Abuja Mart</td>
+                  <td class="text-dim">Oct 20, 2024</td>
+                  <td class="text-dim">Nov 20, 2024</td>
+                  <td class="font-bold">₦67,200</td>
+                  <td><span class="badge badge-partial">Partial</span></td>
+                  <td><button class="btn btn-outline btn-sm" onclick="showPage('invoice-detail',null)">View</button></td>
+                </tr>
+                <tr>
+                  <td class="font-bold">#INV-043</td>
+                  <td>Kano Distributors</td>
+                  <td class="text-dim">Oct 15, 2024</td>
+                  <td class="text-dim">Nov 15, 2024</td>
+                  <td class="font-bold">₦215,800</td>
+                  <td><span class="badge badge-paid">Paid</span></td>
+                  <td><button class="btn btn-outline btn-sm" onclick="showPage('invoice-detail',null)">View</button></td>
+                </tr>
+                <tr>
+                  <td class="font-bold">#INV-042</td>
+                  <td>Rivers Supplies</td>
+                  <td class="text-dim">Oct 5, 2024</td>
+                  <td class="text-dim">Nov 5, 2024</td>
+                  <td class="font-bold">₦128,400</td>
+                  <td><span class="badge badge-draft">Draft</span></td>
+                  <td><button class="btn btn-outline btn-sm" onclick="showPage('invoice-detail',null)">View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ NEW INVOICE ═══ -->
+      <div class="page" id="page-new-invoice">
+        <div class="flex items-center justify-between mb-6">
+          <div class="page-header" style="margin:0">
+            <div class="page-title">Create New Invoice</div>
+            <div class="page-sub">Fill in the details below</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-outline" onclick="showPage('invoices',null)">Cancel</button>
+            <button class="btn btn-primary" onclick="saveInvoice()">Save Draft</button>
+            <button class="btn btn-gold" onclick="saveInvoice()">Send Invoice</button>
+          </div>
+        </div>
+
+        <div class="grid-2" style="align-items:start;">
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Invoice Details</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label">Customer</label>
+                    <select class="form-input">
+                      <option>Select customer...</option>
+                      <option>Dangote Foods Ltd</option>
+                      <option>Zenith Traders</option>
+                      <option>Lagos Grocers</option>
+                      <option>Abuja Mart</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Invoice Number</label>
+                    <input class="form-input" value="#INV-048" readonly style="background:var(--cream);">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Issue Date</label>
+                    <input class="form-input" type="date" value="2024-11-20">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input class="form-input" type="date" value="2024-12-20">
+                  </div>
+                  <div class="form-group form-full">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-input" rows="2" placeholder="Additional notes or payment terms..."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Line Items</span>
+                <button class="btn btn-outline btn-sm" onclick="addLineItem()">+ Add Item</button>
+              </div>
+              <div class="card-body" style="padding:16px;">
+                <div class="line-items">
+                  <div class="li-header">
+                    <span>Description</span><span>Qty</span><span>Unit Price</span><span>Total</span><span></span>
+                  </div>
+                  <div id="line-items-body">
+                    <div class="li-row">
+                      <input class="li-input" value="Web Design Services" oninput="calcTotal()">
+                      <input class="li-input" value="3" type="number" oninput="calcTotal()">
+                      <input class="li-input" value="45000" type="number" oninput="calcTotal()">
+                      <span style="font-size:13px;font-weight:600;color:var(--ink);" class="li-total">₦135,000</span>
+                      <button class="li-del" onclick="this.closest('.li-row').remove();calcTotal()">✕</button>
+                    </div>
+                    <div class="li-row">
+                      <input class="li-input" value="Domain Registration" oninput="calcTotal()">
+                      <input class="li-input" value="1" type="number" oninput="calcTotal()">
+                      <input class="li-input" value="25000" type="number" oninput="calcTotal()">
+                      <span style="font-size:13px;font-weight:600;color:var(--ink);" class="li-total">₦25,000</span>
+                      <button class="li-del" onclick="this.closest('.li-row').remove();calcTotal()">✕</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Summary</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div class="summary-box">
+                  <div class="summary-row">
+                    <span style="color:var(--text-mid)">Subtotal</span>
+                    <span id="subtotal">₦160,000</span>
+                  </div>
+                  <div class="summary-row">
+                    <span style="color:var(--text-mid)">VAT (7.5%)</span>
+                    <span id="vat">₦12,000</span>
+                  </div>
+                  <div class="summary-row">
+                    <span style="color:var(--text-mid)">WHT (5%)</span>
+                    <span id="wht">-₦8,000</span>
+                  </div>
+                  <div class="summary-row total">
+                    <span>Total</span>
+                    <span id="total" style="color:var(--green)">₦164,000</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span class="card-title">Tax Settings</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div class="form-group">
+                    <label class="form-label">VAT Rate</label>
+                    <select class="form-input">
+                      <option>7.5% (Standard)</option>
+                      <option>0% (Exempt)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">WHT Rate</label>
+                    <select class="form-input">
+                      <option>5% (Services)</option>
+                      <option>10% (Rent)</option>
+                      <option>0% (None)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Currency</label>
+                    <select class="form-input">
+                      <option>₦ Nigerian Naira (NGN)</option>
+                      <option>$ US Dollar (USD)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ INVOICE DETAIL ═══ -->
+      <div class="page" id="page-invoice-detail">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <button class="btn btn-outline btn-sm" onclick="showPage('invoices',null)" style="margin-bottom:10px;">← Back</button>
+            <div class="page-title">Invoice #INV-047</div>
+            <div class="flex items-center gap-2" style="margin-top:6px;">
+              <span class="badge badge-paid">Paid</span>
+              <span class="text-dim">Issued Nov 15, 2024 · Due Dec 15, 2024</span>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-outline">🖨️ PDF</button>
+            <button class="btn btn-outline">✉️ Resend</button>
+            <button class="btn btn-gold" onclick="showModal('payment-modal')">Record Payment</button>
+          </div>
+        </div>
+
+        <div class="grid-2" style="align-items:start;">
+          <div class="card">
+            <div class="card-body" style="padding:28px;">
+              <div class="flex items-center justify-between mb-6">
+                <div>
+                  <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--ink);">INVOICE</div>
+                  <div style="font-size:13px;color:var(--text-dim);">#INV-047</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:11px;color:var(--text-dim);">TaxFlow Business</div>
+                  <div style="font-size:12px;font-weight:500;">Adebayo Okonkwo</div>
+                  <div style="font-size:11px;color:var(--text-dim);">Lagos, Nigeria</div>
+                </div>
+              </div>
+
+              <div class="flex justify-between mb-6">
+                <div>
+                  <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:6px;">Billed To</div>
+                  <div style="font-weight:600;">Dangote Foods Ltd</div>
+                  <div style="font-size:12px;color:var(--text-dim);">billing@dangote.com</div>
+                  <div style="font-size:12px;color:var(--text-dim);">Victoria Island, Lagos</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:6px;">Details</div>
+                  <div style="font-size:12px;">Issue: Nov 15, 2024</div>
+                  <div style="font-size:12px;">Due: Dec 15, 2024</div>
+                </div>
+              </div>
+
+              <table class="table" style="margin-bottom:20px;">
+                <thead><tr>
+                  <th>Description</th><th>Qty</th><th>Price</th><th>Total</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td>Brand Identity Design</td><td>1</td><td>₦120,000</td><td class="font-bold">₦120,000</td></tr>
+                  <tr><td>Website Development</td><td>1</td><td>₦50,000</td><td class="font-bold">₦50,000</td></tr>
+                  <tr><td>Monthly Maintenance</td><td>3</td><td>₦5,000</td><td class="font-bold">₦15,000</td></tr>
+                </tbody>
+              </table>
+
+              <div class="summary-box">
+                <div class="summary-row"><span style="color:var(--text-mid)">Subtotal</span><span>₦185,000</span></div>
+                <div class="summary-row"><span style="color:var(--text-mid)">VAT (7.5%)</span><span>₦13,875</span></div>
+                <div class="summary-row"><span style="color:var(--text-mid)">WHT (5%)</span><span>-₦9,250</span></div>
+                <div class="summary-row total"><span>Total</span><span style="color:var(--green);">₦189,625</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Payment History</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--green-light);border-radius:8px;">
+                    <div>
+                      <div style="font-size:13px;font-weight:600;color:var(--green);">Bank Transfer</div>
+                      <div style="font-size:11px;color:var(--text-dim);">Dec 10, 2024</div>
+                    </div>
+                    <div style="font-size:15px;font-weight:700;color:var(--green);">₦189,625</div>
+                  </div>
+                </div>
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
+                  <span style="font-size:13px;color:var(--text-mid);">Balance Due</span>
+                  <span style="font-size:15px;font-weight:700;color:var(--green);">₦0.00</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span class="card-title">Customer Info</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <div><div class="text-dim">Company</div><div style="font-weight:500;margin-top:2px;">Dangote Foods Ltd</div></div>
+                  <div><div class="text-dim">Email</div><div style="margin-top:2px;">billing@dangote.com</div></div>
+                  <div><div class="text-dim">Phone</div><div style="margin-top:2px;">+234 801 234 5678</div></div>
+                  <div><div class="text-dim">TIN</div><div style="margin-top:2px;">1234567890</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ CUSTOMERS ═══ -->
+      <div class="page" id="page-customers">
+        <div class="flex items-center justify-between mb-6">
+          <div class="page-header" style="margin:0">
+            <div class="page-title">Customers</div>
+            <div class="page-sub">24 active customers</div>
+          </div>
+          <button class="btn btn-gold" onclick="showModal('new-customer-modal')">+ Add Customer</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input class="search-input" placeholder="Search customers..." />
+            </div>
+            <span class="text-dim">Showing 6 of 24</span>
+          </div>
+          <div class="card-body customer-list">
+            <div class="customer-row">
+              <div class="cust-avatar" style="background:#fde8c8;color:#8b5e00;">DF</div>
+              <div><div class="cust-name">Dangote Foods Ltd</div><div class="cust-email">billing@dangote.com</div></div>
+              <div class="cust-amount">₦2.1M</div>
+              <span class="badge badge-paid" style="margin-left:12px;">Active</span>
+            </div>
+            <div class="customer-row">
+              <div class="cust-avatar" style="background:#dce8f8;color:#1e4d8c;">ZT</div>
+              <div><div class="cust-name">Zenith Traders</div><div class="cust-email">accounts@zenith.ng</div></div>
+              <div class="cust-amount">₦845K</div>
+              <span class="badge badge-pending" style="margin-left:12px;">Active</span>
+            </div>
+            <div class="customer-row">
+              <div class="cust-avatar" style="background:#d4eddf;color:#1a6b4a;">LG</div>
+              <div><div class="cust-name">Lagos Grocers</div><div class="cust-email">pay@lagosgrocers.com</div></div>
+              <div class="cust-amount">₦620K</div>
+              <span class="badge badge-overdue" style="margin-left:12px;">Overdue</span>
+            </div>
+            <div class="customer-row">
+              <div class="cust-avatar" style="background:#f3e8ff;color:#7c3aed;">AM</div>
+              <div><div class="cust-name">Abuja Mart</div><div class="cust-email">finance@abujamart.com</div></div>
+              <div class="cust-amount">₦310K</div>
+              <span class="badge badge-paid" style="margin-left:12px;">Active</span>
+            </div>
+            <div class="customer-row">
+              <div class="cust-avatar" style="background:#fde8e8;color:#b83232;">KD</div>
+              <div><div class="cust-name">Kano Distributors</div><div class="cust-email">info@kanodist.ng</div></div>
+              <div class="cust-amount">₦215K</div>
+              <span class="badge badge-paid" style="margin-left:12px;">Active</span>
+            </div>
+            <div class="customer-row">
+              <div class="cust-avatar" style="background:#fff3d4;color:#8b6000;">RS</div>
+              <div><div class="cust-name">Rivers Supplies</div><div class="cust-email">orders@riverssupplies.ng</div></div>
+              <div class="cust-amount">₦128K</div>
+              <span class="badge badge-draft" style="margin-left:12px;">Inactive</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PRODUCTS ═══ -->
+      <div class="page" id="page-products">
+        <div class="flex items-center justify-between mb-6">
+          <div class="page-header" style="margin:0">
+            <div class="page-title">Products & Services</div>
+            <div class="page-sub">18 items in catalogue</div>
+          </div>
+          <button class="btn btn-gold" onclick="showModal('new-product-modal')">+ Add Product</button>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <table class="table">
+              <thead><tr>
+                <th>Name</th><th>Category</th><th>Unit Price</th><th>VAT</th><th>Sales Count</th><th>Action</th>
+              </tr></thead>
+              <tbody>
+                <tr><td class="font-bold">Brand Identity Design</td><td><span class="badge badge-blue" style="background:var(--blue-light);color:var(--blue);">Services</span></td><td>₦120,000</td><td>7.5%</td><td>14</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
+                <tr><td class="font-bold">Website Development</td><td><span class="badge badge-blue" style="background:var(--blue-light);color:var(--blue);">Services</span></td><td>₦250,000</td><td>7.5%</td><td>8</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
+                <tr><td class="font-bold">Monthly Maintenance</td><td><span class="badge badge-blue" style="background:var(--blue-light);color:var(--blue);">Services</span></td><td>₦25,000</td><td>7.5%</td><td>32</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
+                <tr><td class="font-bold">SEO Optimization</td><td><span class="badge badge-blue" style="background:var(--blue-light);color:var(--blue);">Services</span></td><td>₦75,000</td><td>7.5%</td><td>6</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
+                <tr><td class="font-bold">Laptop Bag</td><td><span class="badge" style="background:#f3e8ff;color:#7c3aed;">Products</span></td><td>₦8,500</td><td>7.5%</td><td>45</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
+                <tr><td class="font-bold">Training (per day)</td><td><span class="badge badge-blue" style="background:var(--blue-light);color:var(--blue);">Services</span></td><td>₦50,000</td><td>7.5%</td><td>12</td><td><button class="btn btn-outline btn-sm">Edit</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAYMENTS ═══ -->
+      <div class="page" id="page-payments">
+        <div class="flex items-center justify-between mb-6">
+          <div class="page-header" style="margin:0">
+            <div class="page-title">Payments</div>
+            <div class="page-sub">₦1.8M collected this month</div>
+          </div>
+          <button class="btn btn-gold" onclick="showModal('payment-modal')">+ Record Payment</button>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom:24px;">
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#d4eddf;">✅</div><span class="stat-change up">+15%</span></div>
+            <div class="stat-value">₦1.8M</div>
+            <div class="stat-label">Collected</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#fff3cd;">⏳</div></div>
+            <div class="stat-value">₦485K</div>
+            <div class="stat-label">Pending</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#fde8e8;">🔴</div></div>
+            <div class="stat-value">₦340K</div>
+            <div class="stat-label">Overdue</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#dce8f8;">📊</div></div>
+            <div class="stat-value">23</div>
+            <div class="stat-label">Transactions</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Payment Transactions</span></div>
+          <div class="card-body">
+            <table class="table">
+              <thead><tr>
+                <th>Date</th><th>Customer</th><th>Invoice</th><th>Method</th><th>Amount</th><th>Status</th>
+              </tr></thead>
+              <tbody>
+                <tr><td class="text-dim">Dec 10, 2024</td><td>Dangote Foods Ltd</td><td>#INV-047</td><td>Bank Transfer</td><td class="font-bold">₦189,625</td><td><span class="badge badge-paid">Confirmed</span></td></tr>
+                <tr><td class="text-dim">Nov 28, 2024</td><td>Kano Distributors</td><td>#INV-043</td><td>Bank Transfer</td><td class="font-bold">₦215,800</td><td><span class="badge badge-paid">Confirmed</span></td></tr>
+                <tr><td class="text-dim">Nov 15, 2024</td><td>Abuja Mart</td><td>#INV-044</td><td>Cash</td><td class="font-bold">₦40,000</td><td><span class="badge badge-partial">Partial</span></td></tr>
+                <tr><td class="text-dim">Nov 10, 2024</td><td>Zenith Traders</td><td>#INV-046</td><td>—</td><td class="font-bold">₦92,500</td><td><span class="badge badge-pending">Pending</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ DOCUMENTS ═══ -->
+      <div class="page" id="page-documents">
+        <div class="flex items-center justify-between mb-6">
+          <div class="page-header" style="margin:0">
+            <div class="page-title">Documents</div>
+            <div class="page-sub">AI-powered receipt extraction</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="align-items:start;">
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Upload Document</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div class="upload-zone" onclick="simulateUpload()">
+                  <div class="upload-icon" id="upload-icon">📄</div>
+                  <div class="upload-title" id="upload-title">Drop your receipt here</div>
+                  <div class="upload-sub" id="upload-sub">PDF, PNG, JPG up to 10MB · AI will extract data automatically</div>
+                </div>
+
+                <div class="extracted-panel" id="extracted-panel" style="display:none;">
+                  <div class="extracted-title">✅ AI Extracted Data — Receipt_Nov24.pdf</div>
+                  <div class="extracted-grid">
+                    <div class="ext-item"><div class="ext-key">Vendor</div><div class="ext-val">Lagos Supplies Co.</div></div>
+                    <div class="ext-item"><div class="ext-key">Date</div><div class="ext-val">Nov 24, 2024</div></div>
+                    <div class="ext-item"><div class="ext-key">Amount</div><div class="ext-val">₦45,200</div></div>
+                    <div class="ext-item"><div class="ext-key">Category</div><div class="ext-val">Office Supplies</div></div>
+                    <div class="ext-item"><div class="ext-key">VAT</div><div class="ext-val">₦3,390</div></div>
+                    <div class="ext-item"><div class="ext-key">Receipt #</div><div class="ext-val">RCP-20241124</div></div>
+                  </div>
+                  <button class="btn btn-gold" style="width:100%;margin-top:14px;justify-content:center;">Save to Records</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent Documents</span><span class="text-dim">12 files</span></div>
+            <div class="card-body">
+              <table class="table">
+                <thead><tr><th>File</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td class="font-bold">Receipt_Nov24.pdf</td><td class="text-dim">Nov 24</td><td>₦45,200</td><td><span class="badge badge-paid">Processed</span></td></tr>
+                  <tr><td class="font-bold">Invoice_Oct.png</td><td class="text-dim">Oct 18</td><td>₦128,000</td><td><span class="badge badge-paid">Processed</span></td></tr>
+                  <tr><td class="font-bold">Utility_bill.pdf</td><td class="text-dim">Oct 5</td><td>₦18,500</td><td><span class="badge badge-pending">Reviewing</span></td></tr>
+                  <tr><td class="font-bold">Contract.pdf</td><td class="text-dim">Sep 28</td><td>—</td><td><span class="badge badge-draft">No data</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ANALYTICS ═══ -->
+      <div class="page" id="page-analytics">
+        <div class="page-header">
+          <div class="page-title">Analytics & Reports</div>
+          <div class="page-sub">Financial overview · November 2024</div>
+        </div>
+
+        <div class="stats-grid mb-6">
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#fff3d4;">📈</div><span class="stat-change up">↑ 18%</span></div>
+            <div class="stat-value">₦2.4M</div>
+            <div class="stat-label">YTD Revenue</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#d4eddf;">💸</div></div>
+            <div class="stat-value">₦180K</div>
+            <div class="stat-label">VAT Collected</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#fde8e8;">🏛️</div></div>
+            <div class="stat-value">₦120K</div>
+            <div class="stat-label">WHT Deducted</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-top"><div class="stat-icon" style="background:#dce8f8;">📊</div><span class="stat-change up">87%</span></div>
+            <div class="stat-value">41/47</div>
+            <div class="stat-label">Collection Rate</div>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Revenue by Month</span></div>
+            <div class="card-body">
+              <div class="chart-area" id="analytics-chart"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">Invoice Status</span></div>
+            <div class="card-body">
+              <div class="donut-wrap">
+                <svg width="140" height="140" viewBox="0 0 140 140">
+                  <circle cx="70" cy="70" r="55" fill="none" stroke="#f0ede6" stroke-width="22"/>
+                  <circle cx="70" cy="70" r="55" fill="none" stroke="#1a6b4a" stroke-width="22"
+                    stroke-dasharray="187 158" stroke-dashoffset="30" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="55" fill="none" stroke="#c8952a" stroke-width="22"
+                    stroke-dasharray="63 282" stroke-dashoffset="-157" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="55" fill="none" stroke="#b83232" stroke-width="22"
+                    stroke-dasharray="47 298" stroke-dashoffset="-220" transform="rotate(-90 70 70)"/>
+                  <text x="70" y="66" text-anchor="middle" font-family="Fraunces,serif" font-size="18" font-weight="700" fill="#0f0e0b">87%</text>
+                  <text x="70" y="80" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="10" fill="#9e9990">collected</text>
+                </svg>
+              </div>
+              <div class="legend-list">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div><span class="legend-label">Paid</span><span class="legend-val">41 — ₦1.97M</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div><span class="legend-label">Pending</span><span class="legend-val">3 — ₦245K</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div><span class="legend-label">Overdue</span><span class="legend-val">3 — ₦485K</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">Top Customers</span></div>
+            <div class="card-body customer-list">
+              <div class="customer-row">
+                <div class="cust-avatar" style="background:#fde8c8;color:#8b5e00;font-size:11px;">1st</div>
+                <div><div class="cust-name">Dangote Foods Ltd</div></div>
+                <div style="margin-left:auto;">
+                  <div style="font-size:13px;font-weight:600;color:var(--ink);">₦2.1M</div>
+                  <div style="font-size:10px;color:var(--text-dim);">12 invoices</div>
+                </div>
+              </div>
+              <div class="customer-row">
+                <div class="cust-avatar" style="background:#e8e6e0;color:#6b6560;font-size:11px;">2nd</div>
+                <div><div class="cust-name">Zenith Traders</div></div>
+                <div style="margin-left:auto;">
+                  <div style="font-size:13px;font-weight:600;color:var(--ink);">₦845K</div>
+                  <div style="font-size:10px;color:var(--text-dim);">8 invoices</div>
+                </div>
+              </div>
+              <div class="customer-row">
+                <div class="cust-avatar" style="background:#e8d5c0;color:#7d5a3c;font-size:11px;">3rd</div>
+                <div><div class="cust-name">Lagos Grocers</div></div>
+                <div style="margin-left:auto;">
+                  <div style="font-size:13px;font-weight:600;color:var(--ink);">₦620K</div>
+                  <div style="font-size:10px;color:var(--text-dim);">6 invoices</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">Tax Summary</span></div>
+            <div class="card-body" style="padding:20px;">
+              <div class="summary-box">
+                <div class="summary-row"><span style="color:var(--text-mid)">Total Invoiced</span><span class="font-bold">₦2,706,250</span></div>
+                <div class="summary-row"><span style="color:var(--text-mid)">Total VAT (7.5%)</span><span style="color:var(--gold);font-weight:600;">₦180,417</span></div>
+                <div class="summary-row"><span style="color:var(--text-mid)">Total WHT (5%)</span><span style="color:var(--red);font-weight:600;">₦120,278</span></div>
+                <div class="summary-row"><span style="color:var(--text-mid)">Net Collected</span><span style="color:var(--green);font-weight:600;">₦1,972,100</span></div>
+                <div class="summary-row total"><span>Net Receivable</span><span style="color:var(--ink)">₦413,195</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SETTINGS ═══ -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <div class="page-title">Business Settings</div>
+          <div class="page-sub">Manage your business profile and preferences</div>
+        </div>
+
+        <div class="grid-2" style="align-items:start;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Business Profile</span></div>
+            <div class="card-body" style="padding:20px;">
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div class="form-group"><label class="form-label">Business Name</label><input class="form-input" value="Adebayo Okonkwo & Associates"></div>
+                <div class="form-group"><label class="form-label">Business Email</label><input class="form-input" value="info@adebayo-assoc.ng"></div>
+                <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" value="+234 801 234 5678"></div>
+                <div class="form-group"><label class="form-label">Address</label><input class="form-input" value="14 Awolowo Road, Ikoyi, Lagos"></div>
+                <div class="form-group"><label class="form-label">TIN (Tax ID Number)</label><input class="form-input" value="0012345678" placeholder="Enter your TIN"></div>
+                <div class="form-group"><label class="form-label">RC Number</label><input class="form-input" value="RC1234567"></div>
+                <div class="form-group"><label class="form-label">Business Type</label>
+                  <select class="form-input">
+                    <option>Sole Proprietorship</option>
+                    <option>Limited Liability Company (LLC)</option>
+                    <option>Partnership</option>
+                  </select>
+                </div>
+                <button class="btn btn-gold" onclick="showToast('✅ Business profile saved!')">Save Changes</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Invoice Defaults</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div class="form-group"><label class="form-label">Default VAT Rate</label>
+                    <select class="form-input"><option>7.5% (Standard)</option><option>0%</option></select>
+                  </div>
+                  <div class="form-group"><label class="form-label">Default WHT Rate</label>
+                    <select class="form-input"><option>5% (Services)</option><option>10%</option><option>None</option></select>
+                  </div>
+                  <div class="form-group"><label class="form-label">Payment Terms (days)</label>
+                    <input class="form-input" value="30">
+                  </div>
+                  <div class="form-group"><label class="form-label">Invoice Note</label>
+                    <textarea class="form-input" rows="2">Payment due within 30 days. Bank details on request.</textarea>
+                  </div>
+                  <button class="btn btn-outline" onclick="showToast('✅ Invoice defaults saved!')">Save Defaults</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span class="card-title">User Profile</span></div>
+              <div class="card-body" style="padding:20px;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="Adebayo Okonkwo"></div>
+                  <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="adebayo@taxflow.ng"></div>
+                  <button class="btn btn-outline" onclick="showToast('✅ Profile updated!')">Update Profile</button>
+                  <button class="btn btn-outline" style="color:var(--red);border-color:var(--red);" onclick="showToast('🔑 Password reset email sent!')">Change Password</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ─── MODALS ─── -->
+
+<!-- New Invoice Modal -->
+<div class="modal-overlay" id="new-invoice-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Quick Invoice</span>
+      <button class="modal-close" onclick="closeModal('new-invoice-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group"><label class="form-label">Customer</label>
+          <select class="form-input"><option>Select customer...</option><option>Dangote Foods Ltd</option><option>Zenith Traders</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Amount (₦)</label><input class="form-input" placeholder="e.g. 150000"></div>
+        <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" type="date"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" rows="2" placeholder="Services rendered..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('new-invoice-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('new-invoice-modal');showPage('new-invoice',null)">Full Editor</button>
+      <button class="btn btn-gold" onclick="closeModal('new-invoice-modal');showToast('🧾 Invoice created!')">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="payment-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Record Payment</span>
+      <button class="modal-close" onclick="closeModal('payment-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="background:var(--gold-pale);border:1px solid #e8d49a;border-radius:8px;padding:14px;">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Balance Due</div>
+          <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--ink);">₦92,500</div>
+          <div style="font-size:12px;color:var(--text-dim);">Invoice #INV-046 · Zenith Traders</div>
+        </div>
+        <div class="form-group"><label class="form-label">Amount Paid (₦)</label><input class="form-input" placeholder="92500"></div>
+        <div class="form-group"><label class="form-label">Payment Method</label>
+          <select class="form-input">
+            <option>Bank Transfer</option><option>Cash</option><option>Cheque</option><option>Online Payment</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Payment Date</label><input class="form-input" type="date"></div>
+        <div class="form-group"><label class="form-label">Reference / Note</label><input class="form-input" placeholder="Bank ref number..."></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('payment-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="closeModal('payment-modal');showToast('💳 Payment recorded!')">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Customer Modal -->
+<div class="modal-overlay" id="new-customer-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add New Customer</span>
+      <button class="modal-close" onclick="closeModal('new-customer-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" placeholder="e.g. Zenith Traders"></div>
+        <div class="form-group"><label class="form-label">Contact Name</label><input class="form-input" placeholder="Primary contact"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" placeholder="billing@company.com"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" placeholder="+234 800 000 0000"></div>
+        <div class="form-group"><label class="form-label">TIN</label><input class="form-input" placeholder="Tax ID Number"></div>
+        <div class="form-group"><label class="form-label">Address</label><textarea class="form-input" rows="2" placeholder="Business address..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('new-customer-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="closeModal('new-customer-modal');showToast('👤 Customer added!')">Add Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Product Modal -->
+<div class="modal-overlay" id="new-product-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Product / Service</span>
+      <button class="modal-close" onclick="closeModal('new-product-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" placeholder="e.g. Web Design Package"></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select class="form-input"><option>Services</option><option>Products</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Unit Price (₦)</label><input class="form-input" placeholder="150000"></div>
+        <div class="form-group"><label class="form-label">VAT Rate</label>
+          <select class="form-input"><option>7.5%</option><option>0% (Exempt)</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" rows="2" placeholder="Optional description..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('new-product-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="closeModal('new-product-modal');showToast('📦 Product added!')">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toast-icon">✅</span>
+  <span id="toast-text">Success!</span>
+</div>
+
+<script>
+// ─── PAGE NAVIGATION ───
+const pages = {
+  'dashboard': 'Dashboard',
+  'invoices': 'Invoices',
+  'new-invoice': 'Create Invoice',
+  'invoice-detail': 'Invoice Detail',
+  'customers': 'Customers',
+  'products': 'Products & Services',
+  'payments': 'Payments',
+  'documents': 'Documents',
+  'analytics': 'Analytics',
+  'settings': 'Settings',
+};
+
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+
+  document.getElementById('topbar-title').textContent = pages[id] || id;
+
+  // Update nav
+  if (navEl) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    navEl.classList.add('active');
+  }
+
+  // Update topbar actions per page
+  const actions = document.getElementById('topbar-actions');
+  if (id === 'new-invoice') {
+    actions.innerHTML = `
+      <button class="btn btn-outline" onclick="showPage('invoices',null)">Cancel</button>
+      <button class="btn btn-primary" onclick="showToast('📋 Draft saved!')">Save Draft</button>
+      <button class="btn btn-gold" onclick="showToast('✉️ Invoice sent!')">Send Invoice</button>
+    `;
+  } else if (id === 'invoice-detail') {
+    actions.innerHTML = `
+      <button class="btn btn-outline" onclick="showPage('invoices',null)">← Back</button>
+      <button class="btn btn-outline">🖨️ PDF</button>
+      <button class="btn btn-gold" onclick="showModal('payment-modal')">Record Payment</button>
+    `;
+  } else {
+    actions.innerHTML = `
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" placeholder="Search..." />
+      </div>
+      <button class="btn btn-gold" onclick="showModal('new-invoice-modal')">+ New Invoice</button>
+    `;
+  }
+}
+
+// ─── MODALS ───
+function showModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Click outside to close
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// ─── TOAST ───
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ─── CHARTS ───
+function renderChart(containerId) {
+  const data = [
+    { month:'Jun', val:320000 },
+    { month:'Jul', val:415000 },
+    { month:'Aug', val:380000 },
+    { month:'Sep', val:510000 },
+    { month:'Oct', val:475000 },
+    { month:'Nov', val:620000 },
+  ];
+
+  const max = Math.max(...data.map(d => d.val));
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = data.map(d => {
+    const h = Math.round((d.val / max) * 140);
+    const label = (d.val / 1000).toFixed(0) + 'K';
+    return `
+      <div class="bar-wrap">
+        <div class="bar-val">₦${label}</div>
+        <div class="bar" style="height:${h}px" title="₦${d.val.toLocaleString()}"></div>
+        <div class="bar-label">${d.month}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+renderChart('chart-area');
+renderChart('analytics-chart');
+
+// ─── LINE ITEMS CALC ───
+function calcTotal() {
+  let subtotal = 0;
+  document.querySelectorAll('#line-items-body .li-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    if (inputs.length >= 3) {
+      const qty = parseFloat(inputs[1]?.value) || 0;
+      const price = parseFloat(inputs[2]?.value) || 0;
+      const total = qty * price;
+      subtotal += total;
+      const totalEl = row.querySelector('.li-total');
+      if (totalEl) totalEl.textContent = '₦' + total.toLocaleString();
+    }
+  });
+
+  const vat = subtotal * 0.075;
+  const wht = subtotal * 0.05;
+  const total = subtotal + vat - wht;
+
+  document.getElementById('subtotal').textContent = '₦' + subtotal.toLocaleString();
+  document.getElementById('vat').textContent = '₦' + Math.round(vat).toLocaleString();
+  document.getElementById('wht').textContent = '-₦' + Math.round(wht).toLocaleString();
+  document.getElementById('total').textContent = '₦' + Math.round(total).toLocaleString();
+}
+
+// ─── ADD LINE ITEM ───
+function addLineItem() {
+  const body = document.getElementById('line-items-body');
+  const row = document.createElement('div');
+  row.className = 'li-row';
+  row.innerHTML = `
+    <input class="li-input" placeholder="Description..." oninput="calcTotal()">
+    <input class="li-input" value="1" type="number" oninput="calcTotal()">
+    <input class="li-input" value="0" type="number" oninput="calcTotal()">
+    <span style="font-size:13px;font-weight:600;color:var(--ink);" class="li-total">₦0</span>
+    <button class="li-del" onclick="this.closest('.li-row').remove();calcTotal()">✕</button>
+  `;
+  body.appendChild(row);
+  row.querySelector('input').focus();
+}
+
+// ─── DOCUMENT UPLOAD SIMULATION ───
+function simulateUpload() {
+  const icon = document.getElementById('upload-icon');
+  const title = document.getElementById('upload-title');
+  const sub = document.getElementById('upload-sub');
+  const panel = document.getElementById('extracted-panel');
+
+  icon.textContent = '⏳';
+  title.textContent = 'Processing document...';
+  sub.textContent = 'AI is extracting data from your receipt';
+
+  setTimeout(() => {
+    icon.textContent = '✅';
+    title.textContent = 'Receipt processed!';
+    sub.textContent = 'Drop another document to upload';
+    panel.style.display = 'block';
+    showToast('📄 AI extracted data from receipt!');
+  }, 1800);
+}
+
+// ─── SAVE INVOICE ───
+function saveInvoice() {
+  showPage('invoices', null);
+  setTimeout(() => showToast('🧾 Invoice saved and sent!'), 200);
+}
+
+// Initial calc
+calcTotal();
+</script>
+</body>
+</html>
