@@ -3,99 +3,132 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  Package, 
-  CreditCard, 
-  FileScan, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Package,
+  CreditCard,
+  FileScan,
+  BarChart3,
   Settings,
   Menu,
-  X
+  X,
 } from 'lucide-react'
 
-const navItems = [
-  { label: 'Main', items: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Invoices', href: '/invoices', icon: FileText, badge: 4 },
-    { label: 'Customers', href: '/customers', icon: Users },
-    { label: 'Products', href: '/products', icon: Package },
-    { label: 'Payments', href: '/payments', icon: CreditCard },
-  ]},
-  { label: 'Tools', items: [
-    { label: 'Documents', href: '/documents', icon: FileScan },
-    { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-  ]},
-  { label: 'Account', items: [
-    { label: 'Settings', href: '/settings', icon: Settings },
-  ]},
+const navSections = [
+  {
+    label: 'Main',
+    items: [
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, badge: null },
+      { label: 'Invoices',  href: '/invoices',  icon: FileText,        badge: 4    },
+      { label: 'Customers', href: '/customers', icon: Users,           badge: null },
+      { label: 'Products',  href: '/products',  icon: Package,         badge: null },
+      { label: 'Payments',  href: '/payments',  icon: CreditCard,      badge: null },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { label: 'Documents', href: '/documents', icon: FileScan,  badge: null },
+      { label: 'Analytics', href: '/analytics', icon: BarChart3, badge: null },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { label: 'Settings',  href: '/settings',  icon: Settings,  badge: null },
+    ],
+  },
 ]
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [open, setOpen]   = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
 
   return (
-    <div className="layout-container">
-      {/* Mobile Header */}
-      <header className="mobile-header">
-        <button 
-          className="menu-toggle"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          aria-label="Toggle menu"
-        >
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+    <div style={s.shell}>
+
+      {/* ══ Mobile top-bar ══ */}
+      <header style={s.mobileBar}>
+        <button style={s.burger} onClick={() => setOpen(!open)}>
+          {open ? <X size={22} color="#fff" /> : <Menu size={22} color="#fff" />}
         </button>
-        <div className="mobile-logo">
-          <div className="logo-icon">₦</div>
-          <span className="logo-text">TaxFlow NG</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={s.logoSymbol}>N</div>
+          <span style={s.logoText}>TaxFlow NG</span>
         </div>
-        <div className="mobile-avatar">AO</div>
+        <div style={s.userAvatar}>AO</div>
       </header>
 
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* ══ Dim overlay (mobile) ══ */}
+      {open && <div style={s.overlay} onClick={() => setOpen(false)} />}
 
-      {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="logo-wrapper">
-            <div className="logo-icon">₦</div>
+      {/* ════════════════ SIDEBAR ════════════════ */}
+      <aside style={s.sidebar}>
+
+        {/* Logo */}
+        <div style={s.sidebarLogo}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={s.logoSymbol}>N</div>
             <div>
-              <div className="logo-text">TaxFlow NG</div>
-              <div className="logo-sub">Tax Compliance</div>
+              <div style={s.logoText}>TaxFlow NG</div>
+              <div style={s.logoSub}>Tax Compliance</div>
             </div>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          {navItems.map((section, sectionIndex) => (
-            <div key={sectionIndex} className="nav-section">
-              <div className="nav-section-title">{section.label}</div>
-              {section.items.map((item, itemIndex) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+        {/* Nav */}
+        <nav style={s.sidebarNav}>
+          {navSections.map((section) => (
+            <div key={section.label} style={s.navSection}>
+
+              {/* Section heading e.g. "MAIN" */}
+              <div style={s.navLabel}>{section.label}</div>
+
+              {section.items.map((item) => {
+                const active  = pathname === item.href || pathname.startsWith(item.href + '/')
+                const isHover = hovered === item.href && !active
+                const color   = active  ? '#f0c96b'
+                              : isHover ? 'rgba(255,255,255,0.85)'
+                              :           'rgba(255,255,255,0.5)'
+                const bg      = active  ? 'rgba(200,149,42,0.15)'
+                              : isHover ? 'rgba(255,255,255,0.06)'
+                              :           'transparent'
+
                 return (
-                  <Link 
-                    key={itemIndex}
+                  <Link
+                    key={item.href}
                     href={item.href}
-                    className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
-                    onClick={() => setSidebarOpen(false)}
+                    onClick={() => setOpen(false)}
+                    onMouseEnter={() => setHovered(item.href)}
+                    onMouseLeave={() => setHovered(null)}
+                    style={{
+                      ...s.navItem,
+                      background: bg,
+                      color,
+                      textDecoration: 'none',
+                    }}
                   >
-                    {isActive && <div className="nav-indicator" />}
-                    <item.icon size={16} strokeWidth={1.5} className="nav-icon" />
-                    {item.label}
-                    {item.badge && <span className="nav-badge">{item.badge}</span>}
+                    {/* Gold bar on active item */}
+                    {active && <div style={s.activeBar} />}
+
+                    {/* Lucide icon — color via prop, immune to CSS resets */}
+                    <item.icon
+                      size={16}
+                      strokeWidth={1.5}
+                      color={color}
+                      style={{ flexShrink: 0 }}
+                    />
+
+                    {/* Label text */}
+                    <span style={{ ...s.navItemLabel, color }}>{item.label}</span>
+
+                    {/* Badge */}
+                    {item.badge && (
+                      <span style={s.navBadge}>{item.badge}</span>
+                    )}
                   </Link>
                 )
               })}
@@ -103,306 +136,231 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="user-info">
-            <div className="user-avatar">AO</div>
+        {/* User card */}
+        <div style={s.sidebarFooter}>
+          <div style={s.userCard}>
+            <div style={s.userAvatar}>AO</div>
             <div>
-              <div className="user-name">Adebayo Okonkwo</div>
-              <div className="user-role">Business Owner</div>
+              <div style={s.userName}>Adebayo Okonkwo</div>
+              <div style={s.userRole}>Business Owner</div>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="main-content">
+      {/* ════════════════ MAIN CONTENT ════════════════ */}
+      <main style={s.main}>
         {children}
       </main>
 
-      <style jsx>{`
-        .layout-container {
-          display: flex;
-          height: 100vh;
-          overflow: hidden;
-        }
-
-        /* Mobile Header */
-        .mobile-header {
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 60px;
-          background: #0f0e0b;
-          padding: 0 16px;
-          align-items: center;
-          justify-content: space-between;
-          z-index: 100;
-        }
-
-        .menu-toggle {
-          background: none;
-          border: none;
-          color: #fff;
-          cursor: pointer;
-          padding: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .mobile-logo {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .logo-icon {
-          width: 34px;
-          height: 34px;
-          background: #c8952a;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: 'Fraunces', serif;
-          font-size: 18px;
-          font-weight: 700;
-          color: #0f0e0b;
-        }
-
-        .logo-text {
-          font-family: 'Fraunces', serif;
-          font-size: 17px;
-          font-weight: 600;
-          color: #fff;
-        }
-
-        .mobile-avatar {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: #c8952a;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 12px;
-          font-weight: 600;
-          color: #0f0e0b;
-        }
-
-        /* Sidebar Overlay */
-        .sidebar-overlay {
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 150;
-        }
-
-        /* Sidebar */
-        .sidebar {
-          width: 240px;
-          flex-shrink: 0;
-          background: #0f0e0b;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .sidebar-header {
-          padding: 24px 20px 20px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .logo-wrapper {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .logo-sub {
-          font-size: 10px;
-          color: rgba(255,255,255,0.35);
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          margin-top: 2px;
-        }
-
-        .sidebar-nav {
-          flex: 1;
-          overflow-y: auto;
-          padding: 16px 12px;
-        }
-
-        .nav-section {
-          margin-bottom: 24px;
-        }
-
-        .nav-section-title {
-          font-size: 9px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: rgba(255,255,255,0.25);
-          padding: 0 8px;
-          margin-bottom: 6px;
-        }
-
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 9px 10px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.15s;
-          color: rgba(255,255,255,0.5);
-          font-size: 13.5px;
-          font-weight: 400;
-          position: relative;
-          text-decoration: none;
-          background: transparent;
-        }
-
-        .nav-item:hover {
-          color: #f0c96b;
-          background: rgba(200,149,42,0.1);
-        }
-
-        .nav-item-active {
-          color: #f0c96b;
-          background: rgba(200,149,42,0.15);
-        }
-
-        .nav-indicator {
-          position: absolute;
-          left: 0;
-          top: 20%;
-          bottom: 20%;
-          width: 3px;
-          background: #c8952a;
-          border-radius: 0 2px 2px 0;
-        }
-
-        .nav-icon {
-          font-size: 15px;
-          width: 18px;
-          height: 18px;
-          text-align: center;
-          flex-shrink: 0;
-          color: rgba(255,255,255,0.5);
-        }
-
-        .nav-badge {
-          margin-left: auto;
-          background: #c8952a;
-          color: #0f0e0b;
-          font-size: 10px;
-          font-weight: 600;
-          padding: 1px 6px;
-          border-radius: 10px;
-          min-width: 18px;
-          text-align: center;
-        }
-
-        .sidebar-footer {
-          padding: 16px 12px;
-          border-top: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .user-info {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: background 0.15s;
-        }
-
-        .user-avatar {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: #c8952a;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 13px;
-          font-weight: 600;
-          color: #0f0e0b;
-          flex-shrink: 0;
-        }
-
-        .user-name {
-          font-size: 13px;
-          color: rgba(255,255,255,0.8);
-          font-weight: 500;
-        }
-
-        .user-role {
-          font-size: 11px;
-          color: rgba(255,255,255,0.3);
-        }
-
-        /* Main Content */
-        .main-content {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          background: #faf9f6;
-        }
-
-        /* Responsive Styles */
-        @media (max-width: 1024px) {
-          .layout-container {
-            flex-direction: column;
-          }
-
-          .mobile-header {
-            display: flex;
-          }
-
-          .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            z-index: 200;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-          }
-
-          .sidebar-open {
-            transform: translateX(0);
-          }
-
-          .sidebar-overlay {
-            display: block;
-          }
-
-          .main-content {
-            margin-top: 60px;
-            height: calc(100vh - 60px);
-          }
-        }
-
-        @media (max-width: 640px) {
-          .logo-text {
-            font-size: 15px;
-          }
-          
-          .logo-sub {
-            display: none;
-          }
-        }
-      `}</style>
     </div>
   )
+}
+
+/* ─────────────────────────────────────────────────────
+   Pure inline-style object — Tailwind / globals.css
+   cannot touch these. Matches home.html exactly.
+───────────────────────────────────────────────────── */
+const s: Record<string, React.CSSProperties> = {
+
+  shell: {
+    display: 'flex',
+    height: '100vh',
+    overflow: 'hidden',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 14,
+    lineHeight: 1.5,
+  },
+
+  /* ── Mobile bar (hidden on desktop) ── */
+  mobileBar: {
+    display: 'none',          // override with media query in globals.css if needed
+    position: 'fixed',
+    top: 0, left: 0, right: 0,
+    height: 60,
+    background: '#0f0e0b',
+    padding: '0 16px',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 100,
+  },
+  burger: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 8,
+    display: 'flex',
+    alignItems: 'center',
+  },
+
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 150,
+  },
+
+  /* ── Sidebar ── */
+  sidebar: {
+    width: 240,
+    flexShrink: 0,
+    background: '#0f0e0b',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+
+  sidebarLogo: {
+    padding: '24px 20px 20px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+  },
+
+  logoSymbol: {
+    width: 34,
+    height: 34,
+    background: '#c8952a',
+    borderRadius: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: "'Fraunces', serif",
+    fontSize: 18,
+    fontWeight: 700,
+    color: '#0f0e0b',
+    flexShrink: 0,
+  },
+
+  logoText: {
+    fontFamily: "'Fraunces', serif",
+    fontSize: 17,
+    fontWeight: 600,
+    color: '#ffffff',
+    letterSpacing: '-0.3px',
+  },
+
+  logoSub: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.35)',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+
+  sidebarNav: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '16px 12px',
+  },
+
+  navSection: {
+    marginBottom: 24,
+  },
+
+  navLabel: {
+    fontSize: 9,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.25)',
+    padding: '0 8px',
+    marginBottom: 6,
+    fontFamily: "'DM Sans', sans-serif",
+  },
+
+  navItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '9px 10px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    fontSize: 13.5,
+    fontWeight: 400,
+    position: 'relative',
+    width: '100%',
+  },
+
+  /* The label span — explicit styles so no global reset can hide it */
+  navItemLabel: {
+    flex: 1,
+    fontSize: 13.5,
+    fontWeight: 400,
+    lineHeight: 1.4,
+    whiteSpace: 'nowrap',
+    display: 'inline',
+    visibility: 'visible',
+    opacity: 1,
+  },
+
+  activeBar: {
+    position: 'absolute',
+    left: 0,
+    top: '20%',
+    bottom: '20%',
+    width: 3,
+    background: '#c8952a',
+    borderRadius: '0 2px 2px 0',
+  },
+
+  navBadge: {
+    marginLeft: 'auto',
+    background: '#c8952a',
+    color: '#0f0e0b',
+    fontSize: 10,
+    fontWeight: 600,
+    padding: '1px 6px',
+    borderRadius: 10,
+    minWidth: 18,
+    textAlign: 'center',
+  },
+
+  /* ── User card ── */
+  sidebarFooter: {
+    padding: '16px 12px',
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+  },
+
+  userCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: 8,
+    cursor: 'pointer',
+  },
+
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    background: '#c8952a',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#0f0e0b',
+    flexShrink: 0,
+  },
+
+  userName: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: 'rgba(255,255,255,0.8)',
+  },
+
+  userRole: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+  },
+
+  /* ── Main content area ── */
+  main: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    background: '#faf9f6',
+  },
 }
