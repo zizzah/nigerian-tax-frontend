@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { paymentsApi } from '@/lib/api/payment'
+import type { PaymentCreate, PaymentUpdate } from '@/lib/types'
 
 export const PAYMENT_KEYS = {
   all: ['payments'] as const,
@@ -16,20 +17,14 @@ export function usePayments(params?: {
 }) {
   return useQuery({
     queryKey: PAYMENT_KEYS.list(params),
-    queryFn: async () => {
-      const data = await paymentsApi.list(params)
-      return data
-    },
+    queryFn: () => paymentsApi.list(params),
   })
 }
 
 export function usePayment(id: string) {
   return useQuery({
     queryKey: PAYMENT_KEYS.detail(id),
-    queryFn: async () => {
-      const data = await paymentsApi.get(id)
-      return data
-    },
+    queryFn: () => paymentsApi.get(id),
     enabled: !!id,
   })
 }
@@ -37,8 +32,7 @@ export function usePayment(id: string) {
 export function useCreatePayment() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Parameters<typeof paymentsApi.create>[0]) => 
-      paymentsApi.create(payload),
+    mutationFn: (payload: PaymentCreate) => paymentsApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.all })
     },
@@ -48,7 +42,7 @@ export function useCreatePayment() {
 export function useUpdatePayment() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof paymentsApi.update>[1] }) => 
+    mutationFn: ({ id, data }: { id: string; data: PaymentUpdate }) =>
       paymentsApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_KEYS.detail(id) })

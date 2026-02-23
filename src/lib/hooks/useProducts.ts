@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { productsApi } from '@/lib/api/product'
+import type { ProductCreate, ProductUpdate } from '@/lib/types'
 
 export const PRODUCT_KEYS = {
   all: ['products'] as const,
@@ -16,20 +17,14 @@ export function useProducts(params?: {
 }) {
   return useQuery({
     queryKey: PRODUCT_KEYS.list(params),
-    queryFn: async () => {
-      const data = await productsApi.list(params)
-      return data
-    },
+    queryFn: () => productsApi.list(params),
   })
 }
 
 export function useProduct(id: string) {
   return useQuery({
     queryKey: PRODUCT_KEYS.detail(id),
-    queryFn: async () => {
-      const data = await productsApi.get(id)
-      return data
-    },
+    queryFn: () => productsApi.get(id),
     enabled: !!id,
   })
 }
@@ -37,8 +32,7 @@ export function useProduct(id: string) {
 export function useCreateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Parameters<typeof productsApi.create>[0]) => 
-      productsApi.create(payload),
+    mutationFn: (payload: ProductCreate) => productsApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCT_KEYS.all })
     },
@@ -48,7 +42,7 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof productsApi.update>[1] }) => 
+    mutationFn: ({ id, data }: { id: string; data: ProductUpdate }) =>
       productsApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: PRODUCT_KEYS.detail(id) })

@@ -80,6 +80,26 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+  
+  /* TaxFlow NG Custom Theme */
+  --ink: #0f0e0b;
+  --paper: #faf9f6;
+  --cream: #f4f2eb;
+  --warm: #ede9de;
+  --gold: #c8952a;
+  --gold-light: #f0c96b;
+  --gold-pale: #fdf6e3;
+  --green: #1a6b4a;
+  --green-light: #d4eddf;
+  --red: #b83232;
+  --red-light: #fde8e8;
+  --blue: #1e4d8c;
+  --blue-light: #dce8f8;
+  --text: #2c2a24;
+  --text-mid: #6b6560;
+  --text-dim: #9e9990;
+  --shadow: 0 1px 3px rgba(15,14,11,0.08), 0 4px 16px rgba(15,14,11,0.04);
+  --shadow-lg: 0 8px 32px rgba(15,14,11,0.12);
 }
 
 .dark {

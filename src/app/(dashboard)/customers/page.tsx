@@ -1,536 +1,452 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useCustomers, useCustomerStats, useCreateCustomer, useDeleteCustomer, } from '@/lib/hooks/useCustomers'
-import {Customer} from '@/lib/types'
-import { toast } from 'sonner'
-import { 
-  Search, 
-  Plus, 
-  Users, 
-  MoreVertical,
-  Edit,
-  Trash2,
-  Eye,
-  Loader2
-} from 'lucide-react'
+import { Plus, Loader2, Search } from 'lucide-react'
+import { useCustomers, useCustomerStats } from '@/lib/hooks/useCustomers'
+import type { Customer } from '@/lib/types'
+
+// Helper to format currency
+const formatCurrency = (amount: string | number) => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num)
+}
+
+const statusColors: Record<string, { bg: string; text: string }> = {
+  Active: { bg: '#d4eddf', text: '#1a6b4a' },
+  Inactive: { bg: '#ede9de', text: '#6b6560' },
+}
+
+// Generate initials from name
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase()
+}
+
+// Generate avatar color from name
+const getAvatarColor = (name: string) => {
+  const colors = [
+    { bg: '#fde8c8', text: '#8b5e00' },
+    { bg: '#dce8f8', text: '#1e4d8c' },
+    { bg: '#d4eddf', text: '#1a6b4a' },
+    { bg: '#f3e8ff', text: '#7c3aed' },
+    { bg: '#fde8e8', text: '#b83232' },
+    { bg: '#fff3d4', text: '#8b6000' },
+  ]
+  const index = name.charCodeAt(0) % colors.length
+  return colors[index]
+}
 
 export default function CustomersPage() {
-  const router = useRouter()
-  const [search, setSearch] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [newCustomer, setNewCustomer] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    tin: '',
-    customer_type: 'Business' as 'Business' | 'Individual',
-    payment_terms_days: 30,
+  const [searchValue, setSearchValue] = useState('')
+
+  // Fetch data from API
+  const { data: customersData, isLoading } = useCustomers({ 
+    limit: 50,
+    search: searchValue || undefined,
   })
+  const { data: statsData } = useCustomerStats()
 
-  const { data: customersData, isLoading, error } = useCustomers({ 
-    search: search || undefined,
-    limit: 50 
-  })
-  
-  const { data: stats } = useCustomerStats()
-  const createCustomer = useCreateCustomer()
-  const deleteCustomer = useDeleteCustomer()
+  const customers: Customer[] = customersData?.customers || []
+  const totalCustomers = customersData?.total || 0
 
-  const handleCreateCustomer = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await createCustomer.mutateAsync(newCustomer)
-      toast.success('Customer added successfully!')
-      setShowModal(false)
-      setNewCustomer({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        tin: '',
-        customer_type: 'Business',
-        payment_terms_days: 30,
-      })
-    } catch (err) {
-      toast.error('Failed to create customer')
-    }
+  if (isLoading) {
+    return (
+      <>
+        <div className="topbar">
+          <div className="topbar-title">Customers</div>
+        </div>
+        <div className="loading-container">
+          <Loader2 className="animate-spin" size={32} />
+          <p>Loading customers...</p>
+        </div>
+        <style jsx>{`
+          .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 12px;
+            color: var(--text-dim);
+          }
+        `}</style>
+      </>
+    )
   }
-
-  const handleDeleteCustomer = async (id: string) => {
-    if (confirm('Are you sure you want to delete this customer?')) {
-      try {
-        await deleteCustomer.mutateAsync(id)
-        toast.success('Customer deleted')
-      } catch (err) {
-        toast.error('Failed to delete customer')
-      }
-    }
-  }
-
-  const customers = customersData?.customers || []
-  const totalCustomers = stats?.total_customers || customers.length
 
   return (
     <>
-      {/* Topbar */}
-      <div style={{ 
-        height: '60px', 
-        background: '#faf9f6', 
-        borderBottom: '1px solid #ddd9cf', 
-        display: 'flex', 
-        alignItems: 'center', 
-        padding: '0 28px', 
-        gap: '16px',
-        flexShrink: 0 
-      }}>
-        <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '20px', fontWeight: 600, color: '#0f0e0b', flex: 1 }}>
-          Customers
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: '#9e9990' }}>🔍</span>
-            <input 
-              type="text" 
-              placeholder="Search customers..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ 
-                padding: '9px 14px 9px 38px', 
-                border: '1px solid #ddd9cf', 
-                borderRadius: '8px', 
-                fontFamily: 'DM Sans, sans-serif', 
-                fontSize: '13px', 
-                color: '#2c2a24', 
-                background: '#f4f2eb', 
-                outline: 'none', 
-                width: '220px',
-                transition: 'all 0.15s'
-              }}
+      <div className="topbar">
+        <div className="topbar-title">Customers</div>
+        <div className="topbar-actions">
+          <div className="search-wrap">
+            <Search size={16} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search customers..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              className="search-input"
             />
           </div>
-          <button 
-            onClick={() => setShowModal(true)}
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px', 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
-              fontFamily: 'DM Sans, sans-serif', 
-              fontSize: '13px', 
-              fontWeight: 500, 
-              cursor: 'pointer', 
-              border: 'none', 
-              background: '#c8952a', 
-              color: '#0f0e0b' 
-            }}
-          >
+          <button className="btn btn-gold">
             <Plus size={16} /> Add Customer
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px' }}>
-        {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ background: '#fff', border: '1px solid #ddd9cf', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(15,14,11,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', background: '#d4eddf' }}>👥</div>
-            </div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: '28px', fontWeight: 700, color: '#0f0e0b', lineHeight: 1, marginBottom: '4px' }}>
-              {stats?.total_customers || 0}
-            </div>
-            <div style={{ fontSize: '12px', color: '#9e9990' }}>Total Customers</div>
-          </div>
-          <div style={{ background: '#fff', border: '1px solid #ddd9cf', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(15,14,11,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', background: '#d4eddf' }}>✅</div>
-            </div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: '28px', fontWeight: 700, color: '#0f0e0b', lineHeight: 1, marginBottom: '4px' }}>
-              {stats?.active_customers || 0}
-            </div>
-            <div style={{ fontSize: '12px', color: '#9e9990' }}>Active</div>
-          </div>
-          <div style={{ background: '#fff', border: '1px solid #ddd9cf', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(15,14,11,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', background: '#fde8e8' }}>⏳</div>
-            </div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: '28px', fontWeight: 700, color: '#0f0e0b', lineHeight: 1, marginBottom: '4px' }}>
-              {(stats?.total_customers || 0) - (stats?.active_customers || 0)}
-            </div>
-            <div style={{ fontSize: '12px', color: '#9e9990' }}>Inactive</div>
-          </div>
-          <div style={{ background: '#fff', border: '1px solid #ddd9cf', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(15,14,11,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', background: '#fff3d4' }}>💰</div>
-            </div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: '28px', fontWeight: 700, color: '#0f0e0b', lineHeight: 1, marginBottom: '4px' }}>
-              ₦{(stats?.total_revenue || 0).toLocaleString()}
-            </div>
-            <div style={{ fontSize: '12px', color: '#9e9990' }}>Total Revenue</div>
+      <div className="content">
+        <div className="page-header">
+          <div className="page-title">Customers</div>
+          <div className="page-sub">
+            {statsData 
+              ? `${statsData.active_customers} active of ${statsData.total_customers} total`
+              : `${totalCustomers} customers`
+            }
           </div>
         </div>
 
-        {/* Customer List */}
-        <div style={{ background: '#fff', border: '1px solid #ddd9cf', borderRadius: '12px', boxShadow: '0 1px 3px rgba(15,14,11,0.08)', overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #ddd9cf', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'Fraunces, serif', fontSize: '15px', fontWeight: 600, color: '#0f0e0b' }}>
-              {totalCustomers} customers
-            </span>
+        <div className="card">
+          <div className="card-header">
+            <div className="search-wrap">
+              <Search size={16} className="search-icon" />
+              <input 
+                type="text" 
+                placeholder="Search customers..." 
+                className="search-input"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+              />
+            </div>
+            <span className="text-dim">Showing {customers.length} of {totalCustomers}</span>
           </div>
-
-          {isLoading ? (
-            <div style={{ padding: '60px', textAlign: 'center' }}>
-              <Loader2 size={32} style={{ color: '#c8952a', animation: 'spin 1s linear infinite' }} />
-              <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-            </div>
-          ) : error ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#b83232' }}>
-              Failed to load customers
-            </div>
-          ) : customers.length === 0 ? (
-            <div style={{ padding: '60px', textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', opacity: 0.3, marginBottom: '16px' }}>👥</div>
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '18px', fontWeight: 600, color: '#0f0e0b', marginBottom: '8px' }}>
-                No customers yet
-              </div>
-              <div style={{ fontSize: '13px', color: '#9e9990', marginBottom: '24px' }}>
-                Add your first customer to get started
-              </div>
-              <button 
-                onClick={() => setShowModal(true)}
-                style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  padding: '10px 20px', 
-                  borderRadius: '8px', 
-                  fontSize: '13px', 
-                  fontWeight: 500, 
-                  cursor: 'pointer', 
-                  border: 'none', 
-                  background: '#c8952a', 
-                  color: '#0f0e0b' 
-                }}
-              >
-                <Plus size={16} /> Add Customer
-              </button>
-            </div>
-          ) : (
-            <div style={{ padding: '4px 0' }}>
-              {customers.map((customer: Customer) => {
-                const initials = customer.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
-                const avatarColors = ['#fde8c8', '#dce8f8', '#d4eddf', '#f3e8ff', '#fde8e8']
-                const colorIndex = customer.name.charCodeAt(0) % avatarColors.length
-                
+          
+          {customers.length > 0 ? (
+            <div className="customer-list">
+              {customers.map((customer) => {
+                const avatarColor = getAvatarColor(customer.name)
                 return (
-                  <div 
-                    key={customer.id}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '12px',
-                      padding: '12px 20px',
-                      borderBottom: '1px solid #f0ede6',
-                      cursor: 'pointer',
-                      transition: 'background 0.12s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#fdf6e3'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ 
-                      width: '36px', 
-                      height: '36px', 
-                      borderRadius: '50%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      fontSize: '13px', 
-                      fontWeight: 600,
-                      background: avatarColors[colorIndex],
-                      color: '#0f0e0b',
-                      flexShrink: 0 
-                    }}>
-                      {initials}
+                  <div key={customer.id} className="customer-row">
+                    <div 
+                      className="cust-avatar" 
+                      style={{ background: avatarColor.bg, color: avatarColor.text }}
+                    >
+                      {getInitials(customer.name)}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13.5px', fontWeight: 500, color: '#0f0e0b' }}>{customer.name}</div>
-                      <div style={{ fontSize: '11.5px', color: '#9e9990' }}>{customer.email || 'No email'}</div>
+                    <div>
+                      <div className="cust-name">{customer.name}</div>
+                      <div className="cust-email">{customer.email || 'No email'}</div>
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#1a6b4a', marginRight: '12px' }}>
-                      ₦{parseFloat(String(customer.total_invoiced_amount) || '0').toLocaleString()}
+                    <div className="cust-amount">
+                      {formatCurrency(customer.total_invoiced_amount || 0)}
                     </div>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '3px 10px',
-                      borderRadius: '20px',
-                      fontSize: '11px',
-                      fontWeight: 500,
-                      background: customer.is_active ? '#d4eddf' : '#ede9de',
-                      color: customer.is_active ? '#1a6b4a' : '#6b6560',
-                      marginRight: '12px'
-                    }}>
-                      {customer.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteCustomer(customer.id)
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#9e9990',
-                        padding: '8px',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                    <span 
+                      className="badge"
+                      style={{ 
+                        background: customer.is_active ? statusColors.Active?.bg : statusColors.Inactive?.bg, 
+                        color: customer.is_active ? statusColors.Active?.text : statusColors.Inactive?.text,
+                        marginLeft: '12px'
                       }}
                     >
-                      <Trash2 size={16} />
-                    </button>
+                      {customer.is_active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                 )
               })}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <p>No customers found</p>
+              <button className="btn btn-gold">
+                <Plus size={16} /> Add First Customer
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Add Customer Modal */}
-      {showModal && (
-        <div 
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15,14,11,0.5)',
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={() => setShowModal(false)}
-        >
-          <div 
-            style={{
-              background: '#fff',
-              borderRadius: '16px',
-              width: '480px',
-              maxWidth: '90vw',
-              boxShadow: '0 8px 32px rgba(15,14,11,0.12)',
-              animation: 'slideUp 0.25s ease'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <style>{`@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
-            <div style={{ padding: '22px 24px 18px', borderBottom: '1px solid #ddd9cf', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: 'Fraunces, serif', fontSize: '18px', fontWeight: 600 }}>Add New Customer</span>
-              <button 
-                onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9e9990', padding: '4px', borderRadius: '6px' }}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleCreateCustomer}>
-              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Company Name *</label>
-                    <input 
-                      type="text"
-                      value={newCustomer.name}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                      required
-                      placeholder="e.g. Zenith Traders"
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid #ddd9cf',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: '#2c2a24',
-                        background: '#fff',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Customer Type</label>
-                    <select 
-                      value={newCustomer.customer_type}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, customer_type: e.target.value as 'Business' | 'Individual' })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid #ddd9cf',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: '#2c2a24',
-                        background: '#fff',
-                        outline: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <option value="Business">Business</option>
-                      <option value="Individual">Individual</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Email</label>
-                    <input 
-                      type="email"
-                      value={newCustomer.email}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-                      placeholder="billing@company.com"
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid #ddd9cf',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: '#2c2a24',
-                        background: '#fff',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Phone</label>
-                    <input 
-                      type="tel"
-                      value={newCustomer.phone}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                      placeholder="+234 800 000 0000"
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid #ddd9cf',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: '#2c2a24',
-                        background: '#fff',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Address</label>
-                  <input 
-                    type="text"
-                    value={newCustomer.address}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-                    placeholder="Business address..."
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      border: '1px solid #ddd9cf',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      color: '#2c2a24',
-                      background: '#fff',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>City</label>
-                    <input 
-                      type="text"
-                      value={newCustomer.city}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })}
-                      placeholder="Lagos"
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid #ddd9cf',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: '#2c2a24',
-                        background: '#fff',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 500, color: '#6b6560', textTransform: 'uppercase', letterSpacing: '0.3px' }}>TIN</label>
-                    <input 
-                      type="text"
-                      value={newCustomer.tin}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, tin: e.target.value })}
-                      placeholder="Tax ID Number"
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid #ddd9cf',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: '#2c2a24',
-                        background: '#fff',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div style={{ padding: '16px 24px', borderTop: '1px solid #ddd9cf', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button 
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    border: '1px solid #ddd9cf',
-                    background: 'transparent',
-                    color: '#2c2a24',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={createCustomer.isPending}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: createCustomer.isPending ? 'not-allowed' : 'pointer',
-                    border: 'none',
-                    background: '#c8952a',
-                    color: '#0f0e0b',
-                    opacity: createCustomer.isPending ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  {createCustomer.isPending && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-                  Add Customer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <style jsx>{`
+        .topbar {
+          height: 60px;
+          background: var(--paper);
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          padding: 0 28px;
+          gap: 16px;
+          flex-shrink: 0;
+        }
+
+        .topbar-title {
+          font-family: 'Fraunces', serif;
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--ink);
+          flex: 1;
+        }
+
+        .topbar-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 28px;
+        }
+
+        .page-header {
+          margin-bottom: 24px;
+        }
+
+        .page-title {
+          font-family: 'Fraunces', serif;
+          font-size: 26px;
+          font-weight: 700;
+          color: var(--ink);
+        }
+
+        .page-sub {
+          font-size: 13px;
+          color: var(--text-dim);
+          margin-top: 4px;
+        }
+
+        .card {
+          background: #fff;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          box-shadow: var(--shadow);
+          overflow: hidden;
+        }
+
+        .card-header {
+          padding: 18px 20px 14px;
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          border: none;
+          transition: all 0.15s;
+        }
+
+        .btn-gold {
+          background: var(--gold);
+          color: var(--ink);
+        }
+
+        .btn-gold:hover {
+          background: #d4a030;
+        }
+
+        .customer-list {
+          padding: 4px 0;
+        }
+
+        .customer-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 20px;
+          border-bottom: 1px solid #f0ede6;
+          cursor: pointer;
+          transition: background 0.12s;
+        }
+
+        .customer-row:hover {
+          background: var(--gold-pale);
+        }
+
+        .customer-row:last-child {
+          border-bottom: none;
+        }
+
+        .cust-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        .cust-name {
+          font-size: 13.5px;
+          font-weight: 500;
+          color: var(--ink);
+        }
+
+        .cust-email {
+          font-size: 11.5px;
+          color: var(--text-dim);
+        }
+
+        .cust-amount {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--green);
+          margin-left: auto;
+        }
+
+        .badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 3px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .search-wrap {
+          position: relative;
+        }
+
+        .search-input {
+          padding: 9px 14px 9px 38px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          color: var(--text);
+          background: var(--cream);
+          outline: none;
+          width: 220px;
+          transition: all 0.15s;
+        }
+
+        .search-input:focus {
+          border-color: var(--gold);
+          background: #fff;
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 14px;
+          color: var(--text-dim);
+        }
+
+        .text-dim {
+          color: var(--text-dim);
+          font-size: 12px;
+        }
+
+        .empty-state {
+          padding: 40px 20px;
+          text-align: center;
+          color: var(--text-dim);
+        }
+
+        .empty-state p {
+          margin-bottom: 12px;
+        }
+
+        @media (max-width: 1024px) {
+          .topbar {
+            flex-wrap: wrap;
+            height: auto;
+            padding: 12px 16px;
+            gap: 10px;
+          }
+          .topbar-title {
+            width: 100%;
+            font-size: 18px;
+          }
+          .topbar-actions {
+            width: 100%;
+            justify-content: space-between;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .content {
+            padding: 16px;
+          }
+          .page-header {
+            margin-bottom: 16px;
+          }
+          .page-title {
+            font-size: 22px;
+          }
+          .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .search-wrap {
+            width: 100%;
+          }
+          .search-input {
+            width: 100%;
+          }
+          .customer-row {
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+          }
+          .cust-avatar {
+            width: 40px;
+            height: 40px;
+          }
+          .cust-name {
+            font-size: 14px;
+          }
+          .cust-email {
+            font-size: 11px;
+          }
+          .cust-amount {
+            width: 100%;
+            margin-left: 0;
+            margin-top: 4px;
+            text-align: right;
+          }
+          .badge {
+            margin-left: 0 !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .content {
+            padding: 12px;
+          }
+          .topbar-actions {
+            flex-wrap: wrap;
+          }
+          .search-wrap {
+            order: 3;
+            width: 100%;
+            margin-top: 8px;
+          }
+        }
+      `}</style>
     </>
   )
 }

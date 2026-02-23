@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { invoicesApi } from '@/lib/api/invoice'
+import type { InvoiceCreate, InvoiceUpdate, InvoiceStatsOverview } from '@/lib/types'
 
 export const INVOICE_KEYS = {
   all: ['invoices'] as const,
@@ -19,20 +20,14 @@ export function useInvoices(params?: {
 }) {
   return useQuery({
     queryKey: INVOICE_KEYS.list(params),
-    queryFn: async () => {
-      const data = await invoicesApi.list(params)
-      return data
-    },
+    queryFn: () => invoicesApi.list(params),
   })
 }
 
 export function useInvoice(id: string) {
   return useQuery({
     queryKey: INVOICE_KEYS.detail(id),
-    queryFn: async () => {
-      const data = await invoicesApi.get(id)
-      return data
-    },
+    queryFn: () => invoicesApi.get(id),
     enabled: !!id,
   })
 }
@@ -41,20 +36,16 @@ export function useInvoiceStats(params?: {
   start_date?: string
   end_date?: string
 }) {
-  return useQuery({
+  return useQuery<InvoiceStatsOverview>({
     queryKey: [...INVOICE_KEYS.stats, params],
-    queryFn: async () => {
-      const data = await invoicesApi.getStats(params)
-      return data
-    },
+    queryFn: () => invoicesApi.getStats(params),
   })
 }
 
 export function useCreateInvoice() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Parameters<typeof invoicesApi.create>[0]) => 
-      invoicesApi.create(payload),
+    mutationFn: (payload: InvoiceCreate) => invoicesApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVOICE_KEYS.all })
     },
@@ -64,7 +55,7 @@ export function useCreateInvoice() {
 export function useUpdateInvoice() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof invoicesApi.update>[1] }) => 
+    mutationFn: ({ id, data }: { id: string; data: InvoiceUpdate }) =>
       invoicesApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: INVOICE_KEYS.detail(id) })
@@ -87,7 +78,7 @@ export function useFinalizeInvoice() {
 export function useCancelInvoice() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) => 
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       invoicesApi.cancel(id, reason),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: INVOICE_KEYS.detail(id) })

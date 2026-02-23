@@ -17,20 +17,14 @@ export function useDocuments(params?: {
 }) {
   return useQuery({
     queryKey: DOCUMENT_KEYS.list(params),
-    queryFn: async () => {
-      const data = await documentsApi.list(params)
-      return data
-    },
+    queryFn: () => documentsApi.list(params),
   })
 }
 
 export function useDocument(id: string) {
   return useQuery({
     queryKey: DOCUMENT_KEYS.detail(id),
-    queryFn: async () => {
-      const data = await documentsApi.get(id)
-      return data
-    },
+    queryFn: () => documentsApi.get(id),
     enabled: !!id,
   })
 }
@@ -38,8 +32,13 @@ export function useDocument(id: string) {
 export function useUploadDocument() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ file, documentType }: { file: File; documentType: 'RECEIPT' | 'INVOICE' | 'BILL' | 'QUOTE' | 'OTHER' }) => 
-      documentsApi.upload(file, documentType),
+    mutationFn: ({
+      file,
+      documentType,
+    }: {
+      file: File
+      documentType: 'RECEIPT' | 'INVOICE' | 'BILL' | 'QUOTE' | 'OTHER'
+    }) => documentsApi.upload(file, documentType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENT_KEYS.all })
     },

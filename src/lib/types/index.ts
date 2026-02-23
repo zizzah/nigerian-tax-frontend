@@ -159,6 +159,21 @@ export interface CustomerListResponse {
   total_pages: number
 }
 
+export interface CustomerStats {
+  total_customers: number
+  active_customers: number
+  total_revenue: number
+  top_customers: TopCustomer[]
+}
+
+export interface TopCustomer {
+  customer_id: string
+  customer_name: string
+  total_invoiced: number
+  total_paid: number
+  invoice_count: number
+}
+
 // Product Types
 export interface Product {
   id: string
@@ -242,6 +257,8 @@ export interface Invoice {
   id: string
   business_id: string
   customer_id: string
+  customer_name?: string
+  customer_phone?: string
   invoice_number: string
   issue_date: string
   due_date: string
@@ -279,6 +296,25 @@ export interface InvoiceStats {
   total_outstanding: string
   average_invoice_value: string
   average_days_to_payment: number
+}
+
+export interface InvoiceStatsOverview {
+  total_invoices: number
+  total_revenue: number
+  total_paid: number
+  total_outstanding: number
+  draft_count: number
+  sent_count: number
+  paid_count: number
+  overdue_count: number
+  average_invoice_value: number
+  revenue_by_month: RevenueByMonth[]
+}
+
+export interface RevenueByMonth {
+  month: string
+  revenue: number
+  count: number
 }
 
 export interface InvoiceLineItemCreate {
@@ -406,10 +442,12 @@ export interface Document {
   document_number: string | null
   document_date: string | null
   original_filename: string
+  file_name?: string
   file_path: string
   file_size: number
   file_type: string
   status: ProcessingStatus
+  processing_status?: string
   confidence_score: string | null
   processing_error: string | null
   processing_duration_seconds: string | null
@@ -465,4 +503,60 @@ export interface PaginatedResponse<T> {
   page: number
   page_size: number
   total_pages: number
+}
+
+// Line item for invoice creation form
+export interface LineItem {
+  description: string
+  quantity: number
+  unit_price: number
+}
+
+// Extracted document data for UI display
+export interface ExtractedDocumentDisplay {
+  name: string
+  vendor: string
+  date: string
+  amount: number
+  category: string
+  vat: number
+  receiptNumber: string
+}
+
+// New payment form state
+export interface NewPaymentForm {
+  invoice_id: string
+  amount: number
+  payment_method: string
+  payment_date: string
+  reference: string
+  notes: string
+}
+
+// New customer form state
+export interface NewCustomerForm {
+  name: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  state: string
+  tin: string
+  customer_type: 'Business' | 'Individual'
+  payment_terms_days: number
+}
+
+// New product form state
+export interface NewProductForm {
+  name: string
+  description: string
+  sku: string
+  category: string
+  unit_price: number
+  cost_price: number
+  vat_rate: number
+  is_active: boolean
+  track_inventory: boolean
+  current_stock: number
+  low_stock_threshold: number
 }

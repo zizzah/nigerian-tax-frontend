@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customersApi } from '@/lib/api/customers'
+import type { CustomerCreate, CustomerUpdate, CustomerStats } from '@/lib/types'
 
 export const CUSTOMER_KEYS = {
   all: ['customers'] as const,
@@ -16,39 +17,29 @@ export function useCustomers(params?: {
 }) {
   return useQuery({
     queryKey: CUSTOMER_KEYS.list(params),
-    queryFn: async () => {
-      const data = await customersApi.list(params)
-      return data
-    },
+    queryFn: () => customersApi.list(params),
   })
 }
 
 export function useCustomer(id: string) {
   return useQuery({
     queryKey: CUSTOMER_KEYS.detail(id),
-    queryFn: async () => {
-      const data = await customersApi.getById(id)
-      return data
-    },
+    queryFn: () => customersApi.getById(id),
     enabled: !!id,
   })
 }
 
 export function useCustomerStats() {
-  return useQuery({
+  return useQuery<CustomerStats>({
     queryKey: CUSTOMER_KEYS.stats,
-    queryFn: async () => {
-      const data = await customersApi.getStats()
-      return data
-    },
+    queryFn: () => customersApi.getStats(),
   })
 }
 
 export function useCreateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Parameters<typeof customersApi.create>[0]) => 
-      customersApi.create(payload),
+    mutationFn: (payload: CustomerCreate) => customersApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CUSTOMER_KEYS.all })
     },
@@ -58,7 +49,7 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof customersApi.update>[1] }) => 
+    mutationFn: ({ id, data }: { id: string; data: CustomerUpdate }) =>
       customersApi.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: CUSTOMER_KEYS.detail(id) })

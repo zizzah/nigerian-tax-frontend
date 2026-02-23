@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import { 
   LayoutDashboard, 
   FileText, 
@@ -13,10 +13,8 @@ import {
   BarChart3, 
   Settings,
   Menu,
-  X,
-  LogOut
+  X
 } from 'lucide-react'
-import { useAuth } from '@/lib/hooks/useAuth'
 
 const navItems = [
   { label: 'Main', items: [
@@ -42,129 +40,62 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, logout } = useAuth()
-
-  const handleLogout = (e: React.MouseEvent) => {
-    e.preventDefault()
-    logout()
-  }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      {/* Mobile Overlay */}
+    <div className="layout-container">
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button 
+          className="menu-toggle"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label="Toggle menu"
+        >
+          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <div className="mobile-logo">
+          <div className="logo-icon">₦</div>
+          <span className="logo-text">TaxFlow NG</span>
+        </div>
+        <div className="mobile-avatar">AO</div>
+      </header>
+
+      {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 40,
-            display: 'none'
-          }}
-          className="mobile-overlay"
+          className="sidebar-overlay" 
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className="sidebar sidebar-mobile" style={{
-        width: '240px',
-        flexShrink: 0,
-        background: '#0f0e0b',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        position: 'fixed',
-        height: '100vh',
-        zIndex: 50,
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s ease'
-      }}>
-        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '34px',
-              height: '34px',
-              background: '#c8952a',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'Fraunces, serif',
-              fontSize: '18px',
-              fontWeight: 700,
-              color: '#0f0e0b',
-              flexShrink: 0
-            }}>₦</div>
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="logo-wrapper">
+            <div className="logo-icon">₦</div>
             <div>
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '17px', fontWeight: 600, color: '#fff', letterSpacing: '-0.3px' }}>TaxFlow NG</div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: '2px' }}>Tax Compliance</div>
+              <div className="logo-text">TaxFlow NG</div>
+              <div className="logo-sub">Tax Compliance</div>
             </div>
           </div>
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'none' }}
-            className="sidebar-close-btn"
-          >
-            <X size={24} />
-          </button>
         </div>
 
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-          {navItems.map((section) => (
-            <div key={section.label} style={{ marginBottom: '24px' }}>
-              <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(255,255,255,0.25)', padding: '0 8px', marginBottom: '6px' }}>
-                {section.label}
-              </div>
-              {section.items.map((item) => {
-                const isActive = pathname === item.href
+        <nav className="sidebar-nav">
+          {navItems.map((section, sectionIndex) => (
+            <div key={sectionIndex} className="nav-section">
+              <div className="nav-section-title">{section.label}</div>
+              {section.items.map((item, itemIndex) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                 return (
-                  <Link
-                    key={item.href}
+                  <Link 
+                    key={itemIndex}
                     href={item.href}
+                    className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
                     onClick={() => setSidebarOpen(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '9px 10px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      color: isActive ? '#f0c96b' : 'rgba(255,255,255,0.5)',
-                      fontSize: '13.5px',
-                      fontWeight: 400,
-                      position: 'relative',
-                      textDecoration: 'none',
-                      background: isActive ? 'rgba(200,149,42,0.15)' : 'transparent'
-                    }}
                   >
-                    <item.icon size={18} style={{ width: '18px', textAlign: 'center', flexShrink: 0 }} />
+                    {isActive && <div className="nav-indicator" />}
+                    <item.icon size={16} strokeWidth={1.5} className="nav-icon" />
                     {item.label}
-                    {item.badge && (
-                      <span style={{
-                        marginLeft: 'auto',
-                        background: '#c8952a',
-                        color: '#0f0e0b',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        padding: '1px 6px',
-                        borderRadius: '10px',
-                        minWidth: '18px',
-                        textAlign: 'center'
-                      }}>{item.badge}</span>
-                    )}
-                    {isActive && (
-                      <div style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: '20%',
-                        bottom: '20%',
-                        width: '3px',
-                        background: '#c8952a',
-                        borderRadius: '0 2px 2px 0'
-                      }} />
-                    )}
+                    {item.badge && <span className="nav-badge">{item.badge}</span>}
                   </Link>
                 )
               })}
@@ -172,133 +103,303 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        <div style={{ padding: '16px 12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '8px', cursor: 'pointer' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#c8952a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#0f0e0b', flexShrink: 0 }}>
-              {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
-            </div>
+        <div className="sidebar-footer">
+          <div className="user-info">
+            <div className="user-avatar">AO</div>
             <div>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
-                {user?.email?.split('@')[0] || 'User'}
-              </div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
-                {user?.email || 'Business Owner'}
-              </div>
+              <div className="user-name">Adebayo Okonkwo</div>
+              <div className="user-role">Business Owner</div>
             </div>
           </div>
-          <button 
-            onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px',
-              marginTop: '8px',
-              borderRadius: '8px',
-              color: 'rgba(255,255,255,0.5)',
-              fontSize: '13px',
-              textDecoration: 'none',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              width: '100%'
-            }}
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#faf9f6', width: '100%' }} className="main-content">
-        {/* Mobile Header */}
-        <header style={{ 
-          height: '60px',
-          background: '#faf9f6',
-          borderBottom: '1px solid #ddd9cf',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 16px',
-          gap: '12px',
-          flexShrink: 0
-        }} className="mobile-header">
-          <button 
-            onClick={() => setSidebarOpen(true)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            className="menu-btn"
-          >
-            <Menu size={24} color="#2c2a24" />
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              background: '#c8952a',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'Fraunces, serif',
-              fontSize: '16px',
-              fontWeight: 700,
-              color: '#0f0e0b'
-            }}>₦</div>
-            <span style={{ fontFamily: 'Fraunces, serif', fontSize: '16px', fontWeight: 600, color: '#0f0e0b' }} className="mobile-logo-text">TaxFlow</span>
-          </div>
-        </header>
-
+      <main className="main-content">
         {children}
       </main>
 
-      <style>{`
-        @media (max-width: 768px) {
-          .sidebar-mobile {
-            transform: translateX(-100%) !important;
+      <style jsx>{`
+        .layout-container {
+          display: flex;
+          height: 100vh;
+          overflow: hidden;
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 60px;
+          background: #0f0e0b;
+          padding: 0 16px;
+          align-items: center;
+          justify-content: space-between;
+          z-index: 100;
+        }
+
+        .menu-toggle {
+          background: none;
+          border: none;
+          color: #fff;
+          cursor: pointer;
+          padding: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .mobile-logo {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .logo-icon {
+          width: 34px;
+          height: 34px;
+          background: #c8952a;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Fraunces', serif;
+          font-size: 18px;
+          font-weight: 700;
+          color: #0f0e0b;
+        }
+
+        .logo-text {
+          font-family: 'Fraunces', serif;
+          font-size: 17px;
+          font-weight: 600;
+          color: #fff;
+        }
+
+        .mobile-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #c8952a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
+          color: #0f0e0b;
+        }
+
+        /* Sidebar Overlay */
+        .sidebar-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 150;
+        }
+
+        /* Sidebar */
+        .sidebar {
+          width: 240px;
+          flex-shrink: 0;
+          background: #0f0e0b;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .sidebar-header {
+          padding: 24px 20px 20px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .logo-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .logo-sub {
+          font-size: 10px;
+          color: rgba(255,255,255,0.35);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          margin-top: 2px;
+        }
+
+        .sidebar-nav {
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px 12px;
+        }
+
+        .nav-section {
+          margin-bottom: 24px;
+        }
+
+        .nav-section-title {
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: rgba(255,255,255,0.25);
+          padding: 0 8px;
+          margin-bottom: 6px;
+        }
+
+        .nav-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.15s;
+          color: rgba(255,255,255,0.5);
+          font-size: 13.5px;
+          font-weight: 400;
+          position: relative;
+          text-decoration: none;
+          background: transparent;
+        }
+
+        .nav-item:hover {
+          color: #f0c96b;
+          background: rgba(200,149,42,0.1);
+        }
+
+        .nav-item-active {
+          color: #f0c96b;
+          background: rgba(200,149,42,0.15);
+        }
+
+        .nav-indicator {
+          position: absolute;
+          left: 0;
+          top: 20%;
+          bottom: 20%;
+          width: 3px;
+          background: #c8952a;
+          border-radius: 0 2px 2px 0;
+        }
+
+        .nav-icon {
+          font-size: 15px;
+          width: 18px;
+          height: 18px;
+          text-align: center;
+          flex-shrink: 0;
+          color: rgba(255,255,255,0.5);
+        }
+
+        .nav-badge {
+          margin-left: auto;
+          background: #c8952a;
+          color: #0f0e0b;
+          font-size: 10px;
+          font-weight: 600;
+          padding: 1px 6px;
+          border-radius: 10px;
+          min-width: 18px;
+          text-align: center;
+        }
+
+        .sidebar-footer {
+          padding: 16px 12px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+
+        .user-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #c8952a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          font-weight: 600;
+          color: #0f0e0b;
+          flex-shrink: 0;
+        }
+
+        .user-name {
+          font-size: 13px;
+          color: rgba(255,255,255,0.8);
+          font-weight: 500;
+        }
+
+        .user-role {
+          font-size: 11px;
+          color: rgba(255,255,255,0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          background: #faf9f6;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1024px) {
+          .layout-container {
+            flex-direction: column;
           }
-          .sidebar-mobile.open {
-            transform: translateX(0) !important;
-          }
-          .mobile-overlay {
-            display: block !important;
-          }
-          .sidebar-close-btn {
-            display: block !important;
-          }
-          .menu-btn {
-            display: flex !important;
-          }
+
           .mobile-header {
-            display: flex !important;
+            display: flex;
           }
-          .mobile-logo-text {
-            display: block !important;
+
+          .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
           }
-          .desktop-sidebar {
-            display: none !important;
+
+          .sidebar-open {
+            transform: translateX(0);
+          }
+
+          .sidebar-overlay {
+            display: block;
+          }
+
+          .main-content {
+            margin-top: 60px;
+            height: calc(100vh - 60px);
           }
         }
-        @media (min-width: 769px) {
-          .sidebar-mobile {
-            transform: translateX(0) !important;
-            position: relative !important;
+
+        @media (max-width: 640px) {
+          .logo-text {
+            font-size: 15px;
           }
-          .menu-btn {
-            display: none !important;
-          }
-          .mobile-header {
-            display: none !important;
-          }
-          .mobile-logo-text {
-            display: none !important;
+          
+          .logo-sub {
+            display: none;
           }
         }
       `}</style>
