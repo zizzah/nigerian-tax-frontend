@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { apiClient } from '@/lib/api/client'
+import { apiClient, loginRequest } from '@/lib/api/client'
 import type { User, LoginPayload, RegisterPayload, TokenResponse } from '@/lib/types'
 
 interface AuthState {
@@ -9,8 +9,9 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  login: (payload: LoginPayload) => Promise<boolean>
-  register: (payload: RegisterPayload) => Promise<boolean>
+  login: (payload: LoginPayload) => Promise<{ success: boolean; error?: string }>
+  register: (payload: RegisterPayload) => Promise<{ success: boolean; error?: string }>
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   setUser: (user: User) => void
   clearError: () => void
@@ -29,23 +30,24 @@ export const useAuth = create<AuthState>()(
       login: async (payload: LoginPayload) => {
         set({ isLoading: true, error: null })
         try {
-          const { data } = await apiClient.post<TokenResponse>('/auth/login', payload)
-          
+          const { data } = await loginRequest(payload.email, payload.password) as { data: TokenResponse }
+
           // Set cookie (expires in 7 days)
           const maxAge = 7 * 24 * 60 * 60
           document.cookie = `access_token=${data.access_token}; path=/; max-age=${maxAge}; SameSite=Lax`
-          
-          set({ 
-            user: data.user, 
-            token: data.access_token, 
+
+          set({
+            user: data.user,
+            token: data.access_token,
             isAuthenticated: true,
-            isLoading: false 
+            isLoading: false,
+            error: null,
           })
-          return true
+          return { success: true }
         } catch (error: unknown) {
           const message = getErrorMessage(error)
-          set({ error: message, isLoading: false })
-          return false
+          set({ error: message, isLoading: false, isAuthenticated: false })
+          return { success: false, error: message }
         }
       },
 
@@ -54,18 +56,30 @@ export const useAuth = create<AuthState>()(
         try {
           await apiClient.post('/auth/register', payload)
           set({ isLoading: false })
-          return true
+          return { success: true }
         } catch (error: unknown) {
           const message = getErrorMessage(error)
           set({ error: message, isLoading: false })
-          return false
+          return { success: false, error: message }
+        }
+      },
+
+      forgotPassword: async (email: string) => {
+        set({ isLoading: true, error: null })
+        try {
+          await apiClient.post('/auth/forgot-password', { email })
+          set({ isLoading: false })
+          return { success: true }
+        } catch (error: unknown) {
+          const message = getErrorMessage(error)
+          set({ error: message, isLoading: false })
+          return { success: false, error: message }
         }
       },
 
       logout: () => {
         document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
         set({ user: null, token: null, isAuthenticated: false, error: null })
-        // Redirect to login
         if (typeof window !== 'undefined') {
           window.location.href = '/login'
         }
@@ -81,12 +95,11 @@ export const useAuth = create<AuthState>()(
           set({ isAuthenticated: false, user: null })
           return
         }
-        
+
         try {
           const { data } = await apiClient.get<User>('/users/me')
           set({ user: data, isAuthenticated: true })
         } catch {
-          // Token invalid or expired
           document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
           set({ user: null, token: null, isAuthenticated: false })
         }
@@ -94,28 +107,66 @@ export const useAuth = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        user: state.user, 
-        token: state.token, 
-        isAuthenticated: state.isAuthenticated 
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
 )
 
-// Helper function to extract error message
 function getErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { data?: { detail?: unknown } } }).response
-    if (response?.data?.detail) {
-      const detail = response.data.detail
-      if (typeof detail === 'string') return detail
-      if (typeof detail === 'object' && detail !== null && 'message' in detail) {
-        return String((detail as { message: unknown }).message)
+    const axiosError = error as {
+      response?: {
+        status?: number
+        data?: {
+          detail?: unknown
+          message?: string
+        }
       }
     }
+
+    const status = axiosError.response?.status
+    const detail = axiosError.response?.data?.detail
+
+    if (status === 401) return 'Invalid email or password'
+    if (status === 422) return 'Please check your input and try again'
+    if (status === 429) return 'Too many attempts. Please try again later'
+    if (status === 404) return 'Service not found. Please try again later'
+
+    if (typeof detail === 'string') return detail
+    if (typeof detail === 'object' && detail !== null && 'message' in detail) {
+      return String((detail as { message: unknown }).message)
+    }
+    if (Array.isArray(detail)) {
+      return detail
+        .map((e: unknown) => {
+          if (typeof e === 'object' && e !== null && 'msg' in e) {
+            return (e as { msg: string }).msg
+          }
+          return String(e)
+        })
+        .join(', ')
+    }
+
+    if (axiosError.response?.data?.message) {
+      return axiosError.response.data.message
+    }
   }
-  return 'An unexpected error occurred'
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const msg = (error as { message: string }).message
+    if (msg.includes('Network Error') || msg.includes('ECONNREFUSED')) {
+      return 'Cannot connect to server. Please check your internet connection.'
+    }
+    if (msg.includes('timeout')) {
+      return 'Request timed out. Please try again.'
+    }
+  }
+
+  return 'An unexpected error occurred. Please try again.'
 }
 
 export default useAuth

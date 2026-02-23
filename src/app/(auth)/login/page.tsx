@@ -11,67 +11,88 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
-  
-  const { login, isLoading, error, clearError } = useAuth()
-  
+
+  const { login, isLoading } = useAuth()
+
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearError()
-    
-    const success = await login({ email, password })
-    
-    if (success) {
-      toast.success('Login successful!')
+
+    const result = await login({ email, password })
+
+    if (result.success) {
+      toast.success('Welcome back!')
       router.push(redirect)
-    } else if (error) {
-      toast.error(error)
+    } else {
+      toast.error(result.error || 'Login failed. Please try again.')
     }
   }
 
+  const inputStyle = {
+    width: '100%',
+    padding: '12px 16px',
+    border: '1px solid #ddd9cf',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#2c2a24',
+    background: '#fff',
+    outline: 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+    opacity: isLoading ? 0.7 : 1,
+    boxSizing: 'border-box' as const,
+  }
+
   return (
-    <div style={{ 
-      background: '#fff',
-      borderRadius: '16px',
-      padding: 'clamp(24px, 5vw, 40px)',
-      boxShadow: '0 4px 24px rgba(15,14,11,0.08)',
-      border: '1px solid #ddd9cf',
-      width: '100%',
-      maxWidth: '420px'
-    }}>
-      <h2 style={{ 
-        fontFamily: 'Fraunces, serif',
-        fontSize: '24px',
-        fontWeight: 600,
-        color: '#0f0e0b',
-        marginBottom: '8px',
-        textAlign: 'center'
-      }}>
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: '16px',
+        padding: 'clamp(24px, 5vw, 40px)',
+        boxShadow: '0 4px 24px rgba(15,14,11,0.08)',
+        border: '1px solid #ddd9cf',
+        width: '100%',
+        maxWidth: '420px',
+      }}
+    >
+      <h2
+        style={{
+          fontFamily: 'Fraunces, serif',
+          fontSize: '24px',
+          fontWeight: 600,
+          color: '#0f0e0b',
+          marginBottom: '8px',
+          textAlign: 'center',
+        }}
+      >
         Welcome back
       </h2>
-      <p style={{ 
-        fontSize: '14px', 
-        color: '#6b6560',
-        textAlign: 'center',
-        marginBottom: '32px'
-      }}>
+      <p
+        style={{
+          fontSize: '14px',
+          color: '#6b6560',
+          textAlign: 'center',
+          marginBottom: '32px',
+        }}
+      >
         Sign in to your account to continue
       </p>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ width: '100%' }}>
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ 
-            display: 'block',
-            fontSize: '12px',
-            fontWeight: 500,
-            color: '#6b6560',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: '8px'
-          }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#6b6560',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
             Email Address
           </label>
           <input
@@ -81,18 +102,8 @@ export default function LoginPage() {
             placeholder="you@example.com"
             required
             disabled={isLoading}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #ddd9cf',
-              borderRadius: '8px',
-              fontSize: '14px',
-              color: '#2c2a24',
-              background: '#fff',
-              outline: 'none',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
-              opacity: isLoading ? 0.7 : 1,
-            }}
+            autoComplete="email"
+            style={inputStyle}
             onFocus={(e) => {
               e.target.style.borderColor = '#c8952a'
               e.target.style.boxShadow = '0 0 0 3px rgba(200,149,42,0.12)'
@@ -106,16 +117,18 @@ export default function LoginPage() {
 
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label style={{ 
-              fontSize: '12px',
-              fontWeight: 500,
-              color: '#6b6560',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
+            <label
+              style={{
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#6b6560',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
               Password
             </label>
-            <Link 
+            <Link
               href="/forgot-password"
               style={{ fontSize: '12px', color: '#c8952a', textDecoration: 'none' }}
             >
@@ -130,18 +143,8 @@ export default function LoginPage() {
               placeholder="Enter your password"
               required
               disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '12px 44px 12px 16px',
-                border: '1px solid #ddd9cf',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#2c2a24',
-                background: '#fff',
-                outline: 'none',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-                opacity: isLoading ? 0.7 : 1,
-              }}
+              autoComplete="current-password"
+              style={{ ...inputStyle, padding: '12px 44px 12px 16px' }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#c8952a'
                 e.target.style.boxShadow = '0 0 0 3px rgba(200,149,42,0.12)'
@@ -164,8 +167,11 @@ export default function LoginPage() {
                 border: 'none',
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 color: '#9e9990',
-                padding: '4px'
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
               }}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -174,7 +180,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !email || !password}
           style={{
             width: '100%',
             padding: '14px',
@@ -184,17 +190,30 @@ export default function LoginPage() {
             color: '#0f0e0b',
             background: '#c8952a',
             border: 'none',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
-            opacity: isLoading ? 0.7 : 1,
+            cursor: isLoading || !email || !password ? 'not-allowed' : 'pointer',
+            opacity: isLoading || !email || !password ? 0.7 : 1,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            transition: 'all 0.15s'
+            transition: 'all 0.15s',
           }}
         >
           {isLoading ? (
-            'Signing in...'
+            <>
+              <span
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(15,14,11,0.3)',
+                  borderTop: '2px solid #0f0e0b',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                  display: 'inline-block',
+                }}
+              />
+              Signing in...
+            </>
           ) : (
             <>
               <LogIn size={18} />
@@ -204,20 +223,28 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p style={{ 
-        fontSize: '14px', 
-        color: '#6b6560',
-        textAlign: 'center',
-        marginTop: '24px'
-      }}>
+      <p
+        style={{
+          fontSize: '14px',
+          color: '#6b6560',
+          textAlign: 'center',
+          marginTop: '24px',
+        }}
+      >
         Don&apos;t have an account?{' '}
-        <Link 
+        <Link
           href="/register"
           style={{ color: '#c8952a', fontWeight: 500, textDecoration: 'none' }}
         >
           Create account
         </Link>
       </p>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }

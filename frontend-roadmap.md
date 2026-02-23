@@ -84,6 +84,32 @@ npm install @tanstack/react-table
 ### `.env.local`
 
 
+Auth:       POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/verify-email
+Business:   POST /api/v1/businesses/
+GET  /api/v1/businesses/me
+PATCH /api/v1/businesses/me
+Customers:  POST /api/v1/customers/
+GET  /api/v1/customers/
+GET  /api/v1/customers/{id}
+PATCH /api/v1/customers/{id}
+DELETE /api/v1/customers/{id}
+Products:   POST /api/v1/products/
+GET  /api/v1/products/
+GET  /api/v1/products/{id}
+PATCH /api/v1/products/{id}
+Invoices:   POST /api/v1/invoices/
+GET  /api/v1/invoices/
+GET  /api/v1/invoices/{id}
+POST /api/v1/invoices/{id}/finalize
+GET  /api/v1/invoices/{id}/pdf
+Payments:   POST /api/v1/payments/
+GET  /api/v1/payments/
+Documents:  POST /api/v1/documents/upload
+GET  /api/v1/documents/
+GET  /api/v1/documents/{id}
+
 Project Structure
 
 ### 3.1 Complete Folder Structure
