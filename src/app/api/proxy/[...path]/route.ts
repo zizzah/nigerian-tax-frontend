@@ -1,112 +1,87 @@
-/**
- * src/app/api/proxy/[...path]/route.ts
- *
- * Universal proxy — forwards every request from the browser to the backend.
- * The browser only ever talks to localhost:3000; Node.js talks to the backend.
- *
- * Route: /api/proxy/<anything>  →  BACKEND_URL/api/v1/<anything>
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'https://nigerian-tax-compliance-backend.onrender.com'
+const BACKEND = 'https://nigerian-tax-compliance-backend.onrender.com'
+const HOP = new Set(['connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailers','transfer-encoding','upgrade','host'])
 
-const BACKEND_PREFIX = `${BACKEND}/api/v1`
-
-// Hop-by-hop headers that must NOT be forwarded
-const HOP_BY_HOP = new Set([
-  'connection',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailers',
-  'transfer-encoding',
-  'upgrade',
-  'host',
-])
-
-function getCorsHeaders(): Headers {
-  const headers = new Headers()
-  headers.set('Access-Control-Allow-Origin', '*')
-  headers.set('Access-Control-Allow-Credentials', 'true')
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept')
-  return headers
+function cors() {
+  const h = new Headers()
+  h.set('Access-Control-Allow-Origin', '*')
+  h.set('Access-Control-Allow-Credentials', 'true')
+  h.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  h.set('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
+  return h
 }
 
-async function handler(
-  req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
-) {
-  const { path: pathSegments } = await params
-  const targetPath = (pathSegments ?? []).join('/')
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: cors() })
+}
+
+async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params
+  const pathname = path.join('/')
   const search = req.nextUrl.search ?? ''
-  const targetUrl = `${BACKEND_PREFIX}/${targetPath}${search}`
 
-  // Forward all headers except hop-by-hop
-  const forwardHeaders = new Headers()
-  req.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP.has(key.toLowerCase())) {
-      forwardHeaders.set(key, value)
+  const needsBody = !['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+  let bodyBuffer: Buffer | undefined
+  let streaming = false
+
+  if (needsBody) {
+    const ct = req.headers.get('content-type') ?? ''
+    if (ct.includes('multipart/form-data')) {
+      streaming = true
+    } else {
+      const ab = await req.arrayBuffer()
+      bodyBuffer = Buffer.from(new Uint8Array(ab))
     }
-  })
-
-  const hasBody = !['GET', 'HEAD', 'OPTIONS'].includes(req.method)
-  const body = hasBody ? await req.arrayBuffer() : undefined
-
-  let response: Response
-
-  try {
-    response = await fetch(targetUrl, {
-      method: req.method,
-      headers: forwardHeaders,
-      body: body ? Buffer.from(body) : undefined,
-      redirect: 'follow', // Node follows redirects server-side; browser never sees backend URL
-      cache: 'no-store',
-    })
-  } catch (err) {
-    console.error('[proxy] fetch error', targetUrl, err)
-    return NextResponse.json(
-      { detail: 'Proxy could not reach backend.' },
-      { status: 502, headers: getCorsHeaders() }
-    )
   }
 
-  // Build clean response headers
-  const responseHeaders = new Headers()
-  response.headers.forEach((value, key) => {
-    const lower = key.toLowerCase()
-    if (!HOP_BY_HOP.has(lower) && lower !== 'content-encoding') {
-      responseHeaders.set(key, value)
+  const headers = new Headers()
+  req.headers.forEach((v, k) => { if (!HOP.has(k.toLowerCase())) headers.set(k, v) })
+
+  // Try both with and without trailing slash
+  const urls = [
+    BACKEND + '/api/v1/' + pathname.replace(/\/$/, '') + '/' + search,
+    BACKEND + '/api/v1/' + pathname.replace(/\/$/, '') + search,
+  ]
+
+  let res: Response | undefined
+  for (const url of urls) {
+    console.log('[proxy]', req.method, url)
+    try {
+      const opts: RequestInit & { duplex?: string } = {
+        method: req.method,
+        headers,
+        redirect: 'follow',
+        cache: 'no-store',
+      }
+      if (needsBody) {
+        if (streaming) {
+          opts.body = req.body as ReadableStream
+          opts.duplex = 'half'
+        } else {
+          opts.body = bodyBuffer
+        }
+      }
+      res = await fetch(url, opts)
+      console.log('[proxy]', req.method, url, '->', res.status)
+      if (res.status !== 404) break
+    } catch (e) {
+      console.error('[proxy] error', url, e)
     }
-  })
+  }
 
-  // Merge in CORS headers
-  getCorsHeaders().forEach((value, key) => {
-    responseHeaders.set(key, value)
-  })
+  if (!res) {
+    return NextResponse.json({ detail: 'Backend unreachable' }, { status: 502, headers: cors() })
+  }
 
-  const responseBody = await response.arrayBuffer()
-
-  return new NextResponse(responseBody, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: responseHeaders,
-  })
+  const rh = new Headers()
+  res.headers.forEach((v, k) => { const l = k.toLowerCase(); if (!HOP.has(l) && l !== 'content-encoding') rh.set(k, v) })
+  cors().forEach((v, k) => rh.set(k, v))
+  return new NextResponse(await res.arrayBuffer(), { status: res.status, headers: rh })
 }
 
-// OPTIONS preflight
-export async function OPTIONS() {
-  const headers = getCorsHeaders()
-  headers.set('Access-Control-Max-Age', '86400')
-  return new NextResponse(null, { status: 200, headers })
-}
-
-export const GET    = handler
-export const POST   = handler
-export const PUT    = handler
-export const PATCH  = handler
+export const GET = handler
+export const POST = handler
+export const PUT = handler
+export const PATCH = handler
 export const DELETE = handler

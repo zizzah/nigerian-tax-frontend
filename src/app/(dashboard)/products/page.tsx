@@ -2,8 +2,19 @@
 
 import { useState } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
-import { useProducts } from '@/lib/hooks/useProducts'
-import type { Product } from '@/lib/types'
+import { useProducts, useCreateProduct, useUpdateProduct } from '@/lib/hooks/useProducts'
+import type { Product, ProductCreate } from '@/lib/types'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 // Helper to format currency
 const formatCurrency = (amount: number) => {
@@ -17,6 +28,24 @@ const formatCurrency = (amount: number) => {
 
 export default function ProductsPage() {
   const [searchValue, setSearchValue] = useState('')
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  
+  // Form state for add/edit product
+  const [formData, setFormData] = useState<ProductCreate>({
+    name: '',
+    description: '',
+    sku: '',
+    category: '',
+    unit_price: 0,
+    cost_price: 0,
+    unit_of_measure: 'piece',
+    vat_rate: 7.5,
+    track_inventory: false,
+    current_stock: 0,
+    reorder_level: 10,
+  })
 
   // Fetch data from API
   const { data: productsData, isLoading } = useProducts({ 
@@ -24,8 +53,89 @@ export default function ProductsPage() {
     search: searchValue || undefined,
   })
 
+  // Mutations
+  const createProduct = useCreateProduct()
+  const updateProduct = useUpdateProduct()
+
   const products: Product[] = productsData?.products || []
   const totalProducts = productsData?.total || 0
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? parseFloat(value) || 0 : value
+    }))
+  }
+
+  // Handle checkbox changes
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
+    }))
+  }
+
+  // Open add dialog and reset form
+  const handleAddClick = () => {
+    setFormData({
+      name: '',
+      description: '',
+      sku: '',
+      category: '',
+      unit_price: 0,
+      cost_price: 0,
+      unit_of_measure: 'piece',
+      vat_rate: 7.5,
+      track_inventory: false,
+      current_stock: 0,
+      reorder_level: 10,
+    })
+    setIsAddDialogOpen(true)
+  }
+
+  // Open edit dialog with product data
+  const handleEditClick = (product: Product) => {
+    setSelectedProduct(product)
+    setFormData({
+      name: product.name,
+      description: product.description || '',
+      sku: product.sku || '',
+      category: product.category || '',
+      unit_price: product.unit_price,
+      cost_price: product.cost_price || 0,
+      unit_of_measure: product.unit_of_measure,
+      vat_rate: product.vat_rate,
+      track_inventory: product.track_inventory,
+      current_stock: product.current_stock || 0,
+      reorder_level: product.reorder_level || 10,
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  // Handle add product submit
+  const handleAddSubmit = async () => {
+    try {
+      await createProduct.mutateAsync(formData)
+      setIsAddDialogOpen(false)
+    } catch (error) {
+      console.error('Error creating product:', error)
+    }
+  }
+
+  // Handle edit product submit
+  const handleEditSubmit = async () => {
+    if (!selectedProduct) return
+    try {
+      await updateProduct.mutateAsync({ id: selectedProduct.id, data: formData })
+      setIsEditDialogOpen(false)
+      setSelectedProduct(null)
+    } catch (error) {
+      console.error('Error updating product:', error)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -67,7 +177,7 @@ export default function ProductsPage() {
               className="search-input"
             />
           </div>
-          <button className="btn btn-gold">
+          <button className="btn btn-gold" onClick={handleAddClick}>
             <Plus size={16} /> Add Product
           </button>
         </div>
@@ -111,7 +221,7 @@ export default function ProductsPage() {
                     <td>{product.vat_rate}%</td>
                     <td>{product.current_stock ?? '-'}</td>
                     <td>
-                      <button className="btn btn-outline btn-sm">Edit</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => handleEditClick(product)}>Edit</button>
                     </td>
                   </tr>
                 ))}
@@ -122,13 +232,278 @@ export default function ProductsPage() {
           <div className="card">
             <div className="empty-state">
               <p>No products found</p>
-              <button className="btn btn-gold">
+              <button className="btn btn-gold" onClick={handleAddClick}>
                 <Plus size={16} /> Add First Product
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Add Product Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add New Product</DialogTitle>
+            <DialogDescription>
+              Fill in the product details below to create a new product in your catalogue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Product Name *</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Enter product name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sku">SKU</Label>
+                <Input
+                  id="sku"
+                  name="sku"
+                  value={formData.sku}
+                  onChange={handleInputChange}
+                  placeholder="e.g., PRD-001"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="Product description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Input
+                  id="category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Electronics"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit_of_measure">Unit of Measure</Label>
+                <Input
+                  id="unit_of_measure"
+                  name="unit_of_measure"
+                  value={formData.unit_of_measure}
+                  onChange={handleInputChange}
+                  placeholder="e.g., piece, kg"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="unit_price">Unit Price (NGN) *</Label>
+                <Input
+                  id="unit_price"
+                  name="unit_price"
+                  type="number"
+                  value={formData.unit_price}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cost_price">Cost Price (NGN)</Label>
+                <Input
+                  id="cost_price"
+                  name="cost_price"
+                  type="number"
+                  value={formData.cost_price}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="vat_rate">VAT Rate (%)</Label>
+                <Input
+                  id="vat_rate"
+                  name="vat_rate"
+                  type="number"
+                  value={formData.vat_rate}
+                  onChange={handleInputChange}
+                  placeholder="7.5"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="current_stock">Initial Stock</Label>
+                <Input
+                  id="current_stock"
+                  name="current_stock"
+                  type="number"
+                  value={formData.current_stock}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="track_inventory"
+                name="track_inventory"
+                checked={formData.track_inventory}
+                onChange={handleCheckboxChange}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="track_inventory" className="cursor-pointer">
+                Track Inventory
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSubmit} disabled={createProduct.isPending}>
+              {createProduct.isPending ? 'Creating...' : 'Create Product'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Update the product details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Product Name *</Label>
+                <Input
+                  id="edit-name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-sku">SKU</Label>
+                <Input
+                  id="edit-sku"
+                  name="sku"
+                  value={formData.sku}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Input
+                  id="edit-category"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-unit_of_measure">Unit of Measure</Label>
+                <Input
+                  id="edit-unit_of_measure"
+                  name="unit_of_measure"
+                  value={formData.unit_of_measure}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-unit_price">Unit Price (NGN) *</Label>
+                <Input
+                  id="edit-unit_price"
+                  name="unit_price"
+                  type="number"
+                  value={formData.unit_price}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-cost_price">Cost Price (NGN)</Label>
+                <Input
+                  id="edit-cost_price"
+                  name="cost_price"
+                  type="number"
+                  value={formData.cost_price}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-vat_rate">VAT Rate (%)</Label>
+                <Input
+                  id="edit-vat_rate"
+                  name="vat_rate"
+                  type="number"
+                  value={formData.vat_rate}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-current_stock">Current Stock</Label>
+                <Input
+                  id="edit-current_stock"
+                  name="current_stock"
+                  type="number"
+                  value={formData.current_stock}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit-track_inventory"
+                name="track_inventory"
+                checked={formData.track_inventory}
+                onChange={handleCheckboxChange}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="edit-track_inventory" className="cursor-pointer">
+                Track Inventory
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={updateProduct.isPending}>
+              {updateProduct.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <style jsx>{`
         .topbar {

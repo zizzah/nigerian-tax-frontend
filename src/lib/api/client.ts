@@ -1,14 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
-// In the browser, use the Next.js proxy to avoid CORS.
-// On the server (SSR), call the backend directly.
 function getBaseURL() {
   if (typeof window !== 'undefined') {
     return '/api/proxy'
   }
   return (
     process.env.NEXT_PUBLIC_API_URL ||
-    `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://nigerian-tax-compliance-backend.onrender.com'}/api/v1`
+    `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/v1`
   )
 }
 
@@ -18,9 +16,16 @@ export const apiClient = axios.create({
   timeout: 30000,
 })
 
-// Attach token to every request
+// Attach token + strip trailing slashes to prevent FastAPI 307 redirects
+// (redirects escape the proxy and hit the backend directly, causing CORS errors)
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Strip trailing slash from URL (but keep query string)
+    if (config.url) {
+      config.url = config.url.replace(/\/+$/, '')
+    }
+
+    // Attach auth token
     if (typeof document !== 'undefined') {
       const token = document.cookie
         .split('; ')
@@ -55,7 +60,7 @@ apiClient.interceptors.response.use(
   }
 )
 
-// Smart login: tries JSON first, falls back to OAuth2 form-encoded
+// Login: try JSON first, fall back to OAuth2 form-encoded on 422
 export async function loginRequest(email: string, password: string) {
   try {
     return await apiClient.post('/auth/login', { email, password })
