@@ -14,15 +14,21 @@ export const apiClient = axios.create({
   baseURL: getBaseURL(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
+  maxRedirects: 5,
+  withCredentials: true,
 })
 
-// Attach token + strip trailing slashes to prevent FastAPI 307 redirects
-// (redirects escape the proxy and hit the backend directly, causing CORS errors)
+// Add trailing slash + attach token to prevent FastAPI 307 redirects
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Strip trailing slash from URL (but keep query string)
+    // Add trailing slash to prevent FastAPI 307 redirects
     if (config.url) {
-      config.url = config.url.replace(/\/+$/, '')
+      if (!config.url.includes('?') && !config.url.endsWith('/')) {
+        config.url = config.url + '/'
+      } else if (config.url.includes('?') && !config.url.split('?')[0].endsWith('/')) {
+        const [path, query] = config.url.split('?')
+        config.url = path + '/?' + query
+      }
     }
 
     // Attach auth token

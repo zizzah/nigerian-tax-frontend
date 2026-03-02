@@ -40,11 +40,11 @@ export default function ProductsPage() {
     category: '',
     unit_price: 0,
     cost_price: 0,
-    unit_of_measure: 'piece',
-    vat_rate: 7.5,
+    
+    tax_rate: 7.5,
     track_inventory: false,
-    current_stock: 0,
-    reorder_level: 10,
+    quantity_in_stock: 0,
+    low_stock_threshold: 10,
   })
 
   // Fetch data from API
@@ -87,11 +87,11 @@ export default function ProductsPage() {
       category: '',
       unit_price: 0,
       cost_price: 0,
-      unit_of_measure: 'piece',
-      vat_rate: 7.5,
+      
+      tax_rate: 7.5,
       track_inventory: false,
-      current_stock: 0,
-      reorder_level: 10,
+      quantity_in_stock: 0,
+      low_stock_threshold: 10,
     })
     setIsAddDialogOpen(true)
   }
@@ -106,11 +106,11 @@ export default function ProductsPage() {
       category: product.category || '',
       unit_price: product.unit_price,
       cost_price: product.cost_price || 0,
-      unit_of_measure: product.unit_of_measure,
-      vat_rate: product.vat_rate,
+      
+      tax_rate: product.tax_rate,
       track_inventory: product.track_inventory,
-      current_stock: product.current_stock || 0,
-      reorder_level: product.reorder_level || 10,
+      quantity_in_stock: product.quantity_in_stock || 0,
+      low_stock_threshold: product.low_stock_threshold || 10,
     })
     setIsEditDialogOpen(true)
   }
@@ -218,8 +218,8 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td>{formatCurrency(product.unit_price)}</td>
-                    <td>{product.vat_rate}%</td>
-                    <td>{product.current_stock ?? '-'}</td>
+                    <td>{product.tax_rate}%</td>
+                    <td>{product.quantity_in_stock ?? '-'}</td>
                     <td>
                       <button className="btn btn-outline btn-sm" onClick={() => handleEditClick(product)}>Edit</button>
                     </td>
@@ -293,17 +293,7 @@ export default function ProductsPage() {
                   placeholder="e.g., Electronics"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="unit_of_measure">Unit of Measure</Label>
-                <Input
-                  id="unit_of_measure"
-                  name="unit_of_measure"
-                  value={formData.unit_of_measure}
-                  onChange={handleInputChange}
-                  placeholder="e.g., piece, kg"
-                />
               </div>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="unit_price">Unit Price (NGN) *</Label>
@@ -330,23 +320,23 @@ export default function ProductsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="vat_rate">VAT Rate (%)</Label>
+                <Label htmlFor="tax_rate">VAT Rate (%)</Label>
                 <Input
-                  id="vat_rate"
-                  name="vat_rate"
+                  id="tax_rate"
+                  name="tax_rate"
                   type="number"
-                  value={formData.vat_rate}
+                  value={formData.tax_rate}
                   onChange={handleInputChange}
                   placeholder="7.5"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="current_stock">Initial Stock</Label>
+                <Label htmlFor="quantity_in_stock">Initial Stock</Label>
                 <Input
-                  id="current_stock"
-                  name="current_stock"
+                  id="quantity_in_stock"
+                  name="quantity_in_stock"
                   type="number"
-                  value={formData.current_stock}
+                  value={formData.quantity_in_stock}
                   onChange={handleInputChange}
                   placeholder="0"
                 />
@@ -426,16 +416,7 @@ export default function ProductsPage() {
                   onChange={handleInputChange}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-unit_of_measure">Unit of Measure</Label>
-                <Input
-                  id="edit-unit_of_measure"
-                  name="unit_of_measure"
-                  value={formData.unit_of_measure}
-                  onChange={handleInputChange}
-                />
               </div>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-unit_price">Unit Price (NGN) *</Label>
@@ -460,22 +441,22 @@ export default function ProductsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-vat_rate">VAT Rate (%)</Label>
+                <Label htmlFor="edit-tax_rate">VAT Rate (%)</Label>
                 <Input
-                  id="edit-vat_rate"
-                  name="vat_rate"
+                  id="edit-tax_rate"
+                  name="tax_rate"
                   type="number"
-                  value={formData.vat_rate}
+                  value={formData.tax_rate}
                   onChange={handleInputChange}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-current_stock">Current Stock</Label>
+                <Label htmlFor="edit-quantity_in_stock">Current Stock</Label>
                 <Input
-                  id="edit-current_stock"
-                  name="current_stock"
+                  id="edit-quantity_in_stock"
+                  name="quantity_in_stock"
                   type="number"
-                  value={formData.current_stock}
+                  value={formData.quantity_in_stock}
                   onChange={handleInputChange}
                 />
               </div>

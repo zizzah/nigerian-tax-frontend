@@ -173,8 +173,8 @@ export interface TopCustomer {
   total_paid: number
   invoice_count: number
 }
+// Product Types - synced with backend ProductBase / ProductResponse schemas
 
-// Product Types
 export interface Product {
   id: string
   business_id: string
@@ -184,11 +184,13 @@ export interface Product {
   category: string | null
   unit_price: number
   cost_price: number | null
-  unit_of_measure: string
-  vat_rate: number
+  tax_rate: number              // was: vat_rate
+  is_taxable: boolean           // was: missing
   track_inventory: boolean
-  current_stock: number | null
-  reorder_level: number | null
+  quantity_in_stock: number | null  // was: current_stock
+  low_stock_threshold: number | null // was: reorder_level
+  usage_count: number           // was: missing
+  last_used_at: string | null   // was: missing
   is_active: boolean
   created_at: string
   updated_at: string
@@ -197,7 +199,7 @@ export interface Product {
 export interface ProductSummary {
   id: string
   name: string
-  unit_price: string
+  unit_price: number            // was: string (backend returns number)
   is_active: boolean
 }
 
@@ -208,11 +210,11 @@ export interface ProductCreate {
   category?: string
   unit_price: number
   cost_price?: number
-  unit_of_measure: string
-  vat_rate?: number
+  tax_rate?: number             // was: vat_rate
+  is_taxable?: boolean          // was: missing
   track_inventory?: boolean
-  current_stock?: number
-  reorder_level?: number
+  quantity_in_stock?: number    // was: current_stock
+  low_stock_threshold?: number  // was: reorder_level
 }
 
 export interface ProductUpdate extends Partial<ProductCreate> {
@@ -226,7 +228,6 @@ export interface ProductListResponse {
   page_size: number
   total_pages: number
 }
-
 // Invoice Types
 export type InvoiceStatus =
   | 'DRAFT'
