@@ -34,6 +34,7 @@ const navSections = [
     items: [
       { label: 'Documents', href: '/documents', icon: FileScan,  badge: null },
       { label: 'Analytics', href: '/analytics', icon: BarChart3, badge: null },
+      {label:'Reports', href: '/reports', icon: BarChart3, badge: null },
     ],
   },
   {

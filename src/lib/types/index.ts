@@ -98,6 +98,10 @@ export interface BusinessUpdate {
 }
 
 // Customer Types
+// Customer Types - synced with backend schemas
+
+// Customer Types - synced with backend schemas
+
 export interface Customer {
   id: string
   business_id: string
@@ -110,7 +114,7 @@ export interface Customer {
   country: string
   tin: string | null
   total_invoices_count: number
-  total_invoiced_amount: string
+  total_invoiced_amount: string  // Decimal comes back as string from FastAPI
   total_paid_amount: string
   average_payment_days: number | null
   last_invoice_date: string | null
@@ -159,22 +163,11 @@ export interface CustomerListResponse {
   total_pages: number
 }
 
+// Matches what customersApi.getStats() computes client-side
 export interface CustomerStats {
   total_customers: number
   active_customers: number
-  total_revenue: number
-  top_customers: TopCustomer[]
 }
-
-export interface TopCustomer {
-  customer_id: string
-  customer_name: string
-  total_invoiced: number
-  total_paid: number
-  invoice_count: number
-}
-// Product Types - synced with backend ProductBase / ProductResponse schemas
-
 export interface Product {
   id: string
   business_id: string
@@ -229,20 +222,16 @@ export interface ProductListResponse {
   total_pages: number
 }
 // Invoice Types
-export type InvoiceStatus =
-  | 'DRAFT'
-  | 'SENT'
-  | 'PAID'
-  | 'PARTIALLY_PAID'
-  | 'OVERDUE'
-  | 'CANCELLED'
+// Invoice Types - synced with backend schemas/invoice.py
+
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED'  // matches backend InvoiceStatus enum
 
 export interface InvoiceItem {
   id: string
   invoice_id: string
   product_id: string | null
   description: string
-  quantity: string
+  quantity: string        // Decimal comes as string from FastAPI
   unit_price: string
   discount_percent: string
   discount_amount: string
@@ -258,33 +247,30 @@ export interface Invoice {
   id: string
   business_id: string
   customer_id: string
-  customer_name?: string
-  customer_phone?: string
   invoice_number: string
-  issue_date: string
+  issue_date: string      // was: invoice_date
   due_date: string
   status: InvoiceStatus
+  payment_terms: string | null
+  notes: string | null
+  internal_notes: string | null
   subtotal: string
   discount_amount: string
   tax_amount: string
   total_amount: string
   paid_amount: string
   outstanding_amount: string
-  payment_status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID'
-  notes: string | null
-  internal_notes: string | null
   email_sent: boolean
   email_sent_at: string | null
-  email_opened_at: string | null
   created_at: string
   updated_at: string
   sent_at: string | null
   paid_at: string | null
   cancelled_at: string | null
   items: InvoiceItem[]
-  customer: Customer
 }
 
+// Matches backend InvoiceStatistics schema exactly
 export interface InvoiceStats {
   total_invoices: number
   draft_invoices: number
@@ -296,57 +282,41 @@ export interface InvoiceStats {
   total_paid: string
   total_outstanding: string
   average_invoice_value: string
-  average_days_to_payment: number
+  average_days_to_payment: number | null
 }
 
-export interface InvoiceStatsOverview {
-  total_invoices: number
-  total_revenue: number
-  total_paid: number
-  total_outstanding: number
-  draft_count: number
-  sent_count: number
-  paid_count: number
-  overdue_count: number
-  average_invoice_value: number
-  revenue_by_month: RevenueByMonth[]
-}
+// Keep for backward compat with useInvoiceStats hook
+export type InvoiceStatsOverview = InvoiceStats
 
-export interface RevenueByMonth {
-  month: string
-  revenue: number
-  count: number
-}
-
-export interface InvoiceLineItemCreate {
+export interface InvoiceItemCreate {
   product_id?: string
-  product_name: string
-  description?: string
+  description: string     // required by backend
   quantity: number
   unit_price: number
-  vat_rate?: number
-  discount_amount?: number
+  discount_percent?: number  // was: discount_amount
+  tax_rate?: number          // was: vat_rate
+  sort_order?: number
 }
 
 export interface InvoiceCreate {
   customer_id: string
-  invoice_date: string
-  due_date: string
-  currency?: string
+  issue_date: string         // was: invoice_date
+  due_date?: string          // optional — backend defaults to +30 days
+  discount_amount?: number
   payment_terms?: string
   notes?: string
-  terms_and_conditions?: string
-  items: InvoiceLineItemCreate[]
+  internal_notes?: string
+  items: InvoiceItemCreate[]
 }
 
 export interface InvoiceUpdate {
   customer_id?: string
-  invoice_date?: string
+  issue_date?: string
   due_date?: string
+  discount_amount?: number
   payment_terms?: string
   notes?: string
-  terms_and_conditions?: string
-  items?: InvoiceLineItemCreate[]
+  internal_notes?: string
 }
 
 export interface InvoiceListResponse {
@@ -368,7 +338,6 @@ export type PaymentMethod =
   | 'OTHER'
 
 export interface Payment {
-  status: string
   id: string
   invoice_id: string
   business_id: string
@@ -385,8 +354,6 @@ export interface Payment {
   receipt_sent: string | null
   created_at: string
   updated_at: string
-  customer_name?: string
-  invoice_number?: string
 }
 
 export interface PaymentCreate {
@@ -395,6 +362,8 @@ export interface PaymentCreate {
   payment_date: string
   payment_method: PaymentMethod
   reference_number?: string
+  transaction_id?: string
+  bank_name?: string
   notes?: string
 }
 
@@ -555,9 +524,9 @@ export interface NewProductForm {
   category: string
   unit_price: number
   cost_price: number
-  vat_rate: number
+  tax_rate: number          // was: vat_rate
   is_active: boolean
   track_inventory: boolean
-  current_stock: number
-  low_stock_threshold: number
+  quantity_in_stock: number  // was: current_stock
+  low_stock_threshold: number // was: low_stock_threshold (same)
 }

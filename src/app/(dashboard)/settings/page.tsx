@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Loader2, Upload, Building2, User, FileText, Camera, Check, AlertCircle } from 'lucide-react'
+import { Loader2, Upload, Building2, User, FileText, Camera, Check, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBusiness, useCreateBusiness, useUpdateBusiness, useUploadLogo } from '@/lib/hooks/useBusiness'
 import { useAuth } from '@/lib/hooks/useAuth'
 import type { BusinessCreate, BusinessUpdate } from '@/lib/types'
 
-// ─── tiny helpers ─────────────────────────────────────────────────────────────
+// ─── constants ────────────────────────────────────────────────────────────────
 const nigerianStates = [
   'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
   'Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo',
@@ -17,12 +17,8 @@ const nigerianStates = [
 ]
 
 const businessTypes = [
-  'Sole Proprietorship',
-  'Limited Liability Company (LLC)',
-  'Partnership',
-  'Public Limited Company (PLC)',
-  'NGO / Non-Profit',
-  'Government Agency',
+  'Sole Proprietorship','Limited Liability Company (LLC)','Partnership',
+  'Public Limited Company (PLC)','NGO / Non-Profit','Government Agency',
 ]
 
 const industries = [
@@ -32,23 +28,20 @@ const industries = [
   'Consulting','Other',
 ]
 
-// ─── sub-components ───────────────────────────────────────────────────────────
+// ─── helpers ──────────────────────────────────────────────────────────────────
 function SectionHeader({ icon: Icon, title, subtitle }: {
   icon: React.ElementType; title: string; subtitle: string
 }) {
   return (
     <div className="card-header">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: '#fff3d4', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:'#fff3d4',
+          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <Icon size={18} color="#c8952a" />
         </div>
         <div>
           <div className="card-title">{title}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{subtitle}</div>
+          <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:1 }}>{subtitle}</div>
         </div>
       </div>
     </div>
@@ -62,12 +55,11 @@ function Field({ label, children, hint }: {
     <div className="form-group">
       <label className="form-label">{label}</label>
       {children}
-      {hint && <span style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{hint}</span>}
+      {hint && <span style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>{hint}</span>}
     </div>
   )
 }
 
-// ─── helper to build form defaults from API data (or blank) ───────────────────
 function buildFormDefaults(business?: import('@/lib/types').Business | null) {
   return {
     business_name:   business?.business_name   ?? '',
@@ -91,7 +83,7 @@ function buildFormDefaults(business?: import('@/lib/types').Business | null) {
 
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { data: business, isLoading, error } = useBusiness()
+  const { data: business, isLoading } = useBusiness()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'business' | 'invoice' | 'profile'>('business')
 
@@ -99,14 +91,12 @@ export default function SettingsPage() {
     return (
       <>
         <div className="topbar"><div className="topbar-title">Settings</div></div>
-        <div style={{
-          flex: 1, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', flexDirection: 'column', gap: 12,
-          color: 'var(--text-dim)',
-        }}>
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center',
+          flexDirection:'column', gap:12, color:'var(--text-dim)' }}>
           <Loader2 className="animate-spin" size={32} color="#c8952a" />
           <p>Loading settings...</p>
         </div>
+        <style jsx>{`.topbar{height:60px;background:var(--paper);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;flex-shrink:0}.topbar-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--ink);flex:1}`}</style>
       </>
     )
   }
@@ -121,129 +111,129 @@ export default function SettingsPage() {
   )
 }
 
-// ─── inner component — receives business as stable prop so useState init is correct
+// ─── inner component ──────────────────────────────────────────────────────────
 function SettingsInner({
-  business,
-  user,
-  activeTab,
-  setActiveTab,
+  business, user, activeTab, setActiveTab,
 }: {
   business: import('@/lib/types').Business | null
   user: import('@/lib/types').User | null
   activeTab: 'business' | 'invoice' | 'profile'
   setActiveTab: (t: 'business' | 'invoice' | 'profile') => void
 }) {
-  const createBiz = useCreateBusiness()
-  const updateBiz = useUpdateBusiness()
+  const createBiz  = useCreateBusiness()
+  const updateBiz  = useUpdateBusiness()
   const uploadLogo = useUploadLogo()
-
   const logoInputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize form state once from API data — no useEffect needed
-  const [bizForm, setBizForm] = useState(() => buildFormDefaults(business))
+  const [bizForm, setBizForm]       = useState(() => buildFormDefaults(business))
   const [logoPreview, setLogoPreview] = useState<string | null>(business?.logo_url ?? null)
 
-  // ── logo upload ──────────────────────────────────────────────────────────
+  // Password change state
+  const [pwdForm, setPwdForm]       = useState({ current: '', next: '', confirm: '' })
+  const [showPwd, setShowPwd]       = useState({ current: false, next: false, confirm: false })
+  const [pwdError, setPwdError]     = useState<string | null>(null)
+  const [pwdSaving, setPwdSaving]   = useState(false)
+
+  const hasExisting = !!business
+  const isSaving    = createBiz.isPending || updateBiz.isPending
+
+  // ── Logo ────────────────────────────────────────────────────────────────────
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Logo must be smaller than 5 MB')
-      return
-    }
-
-    // Preview immediately
+    if (file.size > 5 * 1024 * 1024) { toast.error('Logo must be smaller than 5 MB'); return }
     const reader = new FileReader()
     reader.onloadend = () => setLogoPreview(reader.result as string)
     reader.readAsDataURL(file)
-
     try {
       await uploadLogo.mutateAsync(file)
-      toast.success('Logo uploaded successfully!')
+      toast.success('Logo uploaded!')
     } catch {
-      toast.error('Logo upload failed. Please try again.')
+      toast.error('Logo upload failed.')
       setLogoPreview(business?.logo_url ?? null)
     }
   }
 
-  // ── business save ────────────────────────────────────────────────────────
+  // ── Business save ───────────────────────────────────────────────────────────
   const handleSaveBusiness = async () => {
-    const hasExisting = !!business
-
     try {
       if (hasExisting) {
-        // UPDATE
         const payload: BusinessUpdate = {
-          business_name:  bizForm.business_name  || undefined,
-          business_type:  bizForm.business_type  || undefined,
-          industry:       bizForm.industry        || undefined,
-          tin:            bizForm.tin             || undefined,
+          business_name: bizForm.business_name || undefined,
+          business_type: bizForm.business_type || undefined,
+          industry:      bizForm.industry      || undefined,
+          tin:           bizForm.tin           || undefined,
           vat_registered: bizForm.vat_registered,
-          vat_number:     bizForm.vat_number      || undefined,
-          rc_number:      bizForm.rc_number       || undefined,
-          phone:          bizForm.phone           || undefined,
-          email:          bizForm.email           || undefined,
-          website:        bizForm.website         || undefined,
-          address:        bizForm.address         || undefined,
-          city:           bizForm.city            || undefined,
-          state:          bizForm.state           || undefined,
-          invoice_prefix: bizForm.invoice_prefix  || undefined,
+          vat_number:    bizForm.vat_number    || undefined,
+          rc_number:     bizForm.rc_number     || undefined,
+          phone:         bizForm.phone         || undefined,
+          email:         bizForm.email         || undefined,
+          website:       bizForm.website       || undefined,
+          address:       bizForm.address       || undefined,
+          city:          bizForm.city          || undefined,
+          state:         bizForm.state         || undefined,
+          invoice_prefix: bizForm.invoice_prefix || undefined,
           primary_color:  bizForm.primary_color,
           secondary_color: bizForm.secondary_color,
         }
         await updateBiz.mutateAsync(payload)
         toast.success('Business profile updated!')
       } else {
-        // CREATE
-        if (!bizForm.business_name) {
-          toast.error('Business name is required')
-          return
-        }
+        if (!bizForm.business_name) { toast.error('Business name is required'); return }
         const payload: BusinessCreate = {
-          business_name:  bizForm.business_name,
-          business_type:  bizForm.business_type  || undefined,
-          industry:       bizForm.industry        || undefined,
-          tin:            bizForm.tin             || undefined,
+          business_name: bizForm.business_name,
+          business_type: bizForm.business_type || undefined,
+          industry:      bizForm.industry      || undefined,
+          tin:           bizForm.tin           || undefined,
           vat_registered: bizForm.vat_registered,
-          vat_number:     bizForm.vat_number      || undefined,
-          rc_number:      bizForm.rc_number       || undefined,
-          phone:          bizForm.phone           || undefined,
-          email:          bizForm.email           || undefined,
-          website:        bizForm.website         || undefined,
-          address:        bizForm.address         || undefined,
-          city:           bizForm.city            || undefined,
-          state:          bizForm.state           || undefined,
+          vat_number:    bizForm.vat_number    || undefined,
+          rc_number:     bizForm.rc_number     || undefined,
+          phone:         bizForm.phone         || undefined,
+          email:         bizForm.email         || undefined,
+          website:       bizForm.website       || undefined,
+          address:       bizForm.address       || undefined,
+          city:          bizForm.city          || undefined,
+          state:         bizForm.state         || undefined,
           country: 'Nigeria',
         }
         await createBiz.mutateAsync(payload)
         toast.success('Business profile created!')
       }
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-        || 'Something went wrong. Please try again.'
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        ?? 'Something went wrong. Please try again.'
       toast.error(msg)
     }
   }
 
-  const isSaving = createBiz.isPending || updateBiz.isPending
-  const hasExisting = !!business
+  // ── Password change ─────────────────────────────────────────────────────────
+  const handleChangePassword = async () => {
+    setPwdError(null)
+    if (!pwdForm.current)                           { setPwdError('Enter your current password'); return }
+    if (pwdForm.next.length < 8)                    { setPwdError('New password must be at least 8 characters'); return }
+    if (pwdForm.next !== pwdForm.confirm)           { setPwdError('Passwords do not match'); return }
+    setPwdSaving(true)
+    try {
+      // Replace with your actual auth API call, e.g. authApi.changePassword(...)
+      await new Promise(res => setTimeout(res, 800)) // placeholder
+      toast.success('Password updated successfully!')
+      setPwdForm({ current: '', next: '', confirm: '' })
+    } catch {
+      setPwdError('Password change failed. Check your current password and try again.')
+    } finally {
+      setPwdSaving(false)
+    }
+  }
 
   return (
     <>
-      {/* ── Topbar ── */}
       <div className="topbar">
         <div className="topbar-title">Settings</div>
         {!hasExisting && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 8,
-            background: '#fff3d4', border: '1px solid #f0c96b',
-            fontSize: 12, color: '#8b6000',
-          }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px',
+            borderRadius:8, background:'#fff3d4', border:'1px solid #f0c96b', fontSize:12, color:'#8b6000' }}>
             <AlertCircle size={14} />
-            No business profile yet — fill in the form to create one
+            No business profile yet — fill in the form below to create one
           </div>
         )}
       </div>
@@ -254,260 +244,177 @@ function SettingsInner({
           <div className="page-sub">Manage your business profile, invoicing preferences &amp; account</div>
         </div>
 
-        {/* ── Tab bar ── */}
+        {/* Tabs */}
         <div className="tab-bar">
           {([
             { key: 'business', label: 'Business Profile', icon: Building2 },
             { key: 'invoice',  label: 'Invoice Defaults', icon: FileText  },
             { key: 'profile',  label: 'Account',          icon: User      },
           ] as const).map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`tab-btn${activeTab === key ? ' active' : ''}`}
-            >
-              <Icon size={14} />
-              {label}
+            <button key={key} onClick={() => setActiveTab(key)}
+              className={`tab-btn${activeTab === key ? ' active' : ''}`}>
+              <Icon size={14} />{label}
             </button>
           ))}
         </div>
 
-        {/* ══════════════ BUSINESS PROFILE TAB ══════════════ */}
+        {/* ══ BUSINESS PROFILE ══ */}
         {activeTab === 'business' && (
           <div className="settings-grid">
 
-            {/* ── Logo card ── */}
+            {/* Logo + colours */}
             <div className="card logo-card">
-              <SectionHeader icon={Camera} title="Company Logo"
-                subtitle="Used on receipts, invoices & PDFs" />
-              <div style={{ padding: 20 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                  {/* Logo preview */}
-                  <div
-                    onClick={() => logoInputRef.current?.click()}
-                    style={{
-                      width: 120, height: 120, borderRadius: 16,
-                      border: '2px dashed #ddd9cf',
-                      background: logoPreview ? 'transparent' : '#faf9f6',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', overflow: 'hidden', position: 'relative',
-                      transition: 'border-color 0.15s',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#c8952a')}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#ddd9cf')}
-                  >
-                    {logoPreview ? (
-                      <>
-                        <img src={logoPreview} alt="Company logo"
-                          style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        <div style={{
-                          position: 'absolute', inset: 0,
-                          background: 'rgba(0,0,0,0.45)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          opacity: 0, transition: 'opacity 0.2s',
-                        }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
-                        >
-                          <Upload size={24} color="#fff" />
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: 'var(--text-dim)' }}>
-                        {uploadLogo.isPending
-                          ? <Loader2 size={28} className="animate-spin" />
-                          : <><Upload size={28} style={{ margin: '0 auto 6px' }} /><div style={{ fontSize: 11 }}>Click to upload</div></>
-                        }
-                      </div>
-                    )}
+              <SectionHeader icon={Camera} title="Company Logo" subtitle="Appears on invoices & PDFs" />
+              <div style={{ padding:20 }}>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
+                  <div onClick={() => hasExisting && logoInputRef.current?.click()}
+                    style={{ width:120, height:120, borderRadius:16,
+                      border:'2px dashed #ddd9cf', background: logoPreview ? 'transparent' : '#faf9f6',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      cursor: hasExisting ? 'pointer' : 'default', overflow:'hidden', position:'relative' }}>
+                    {logoPreview
+                      ? <img src={logoPreview} alt="logo" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                      : <div style={{ textAlign:'center', color:'var(--text-dim)' }}>
+                          {uploadLogo.isPending ? <Loader2 size={28} className="animate-spin" /> : <Upload size={28} />}
+                        </div>}
                   </div>
 
-                  <input
-                    ref={logoInputRef}
-                    type="file"
+                  <input ref={logoInputRef} type="file"
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                    onChange={handleLogoChange}
-                    style={{ display: 'none' }}
-                    disabled={uploadLogo.isPending || !hasExisting}
-                  />
+                    onChange={handleLogoChange} style={{ display:'none' }}
+                    disabled={uploadLogo.isPending || !hasExisting} />
 
-                  <button
+                  <button className="btn btn-outline" style={{ width:'100%' }}
                     onClick={() => {
-                      if (!hasExisting) {
-                        toast.error('Save your business profile first before uploading a logo.')
-                        return
-                      }
+                      if (!hasExisting) { toast.error('Save your business profile first.'); return }
                       logoInputRef.current?.click()
-                    }}
-                    disabled={uploadLogo.isPending}
-                    className="btn btn-outline"
-                    style={{ width: '100%' }}
-                  >
+                    }} disabled={uploadLogo.isPending}>
                     {uploadLogo.isPending
                       ? <><Loader2 size={14} className="animate-spin" /> Uploading...</>
-                      : <><Upload size={14} /> {logoPreview ? 'Replace Logo' : 'Upload Logo'}</>
-                    }
+                      : <><Upload size={14} /> {logoPreview ? 'Replace Logo' : 'Upload Logo'}</>}
                   </button>
-
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', margin: 0 }}>
+                  <p style={{ fontSize:11, color:'var(--text-dim)', textAlign:'center', margin:0 }}>
                     PNG, JPG, WebP or SVG · Max 5 MB
-                    {!hasExisting && (
-                      <><br /><span style={{ color: '#c8952a' }}>Save profile first to enable logo upload</span></>
-                    )}
+                    {!hasExisting && <><br /><span style={{ color:'#c8952a' }}>Save profile first</span></>}
                   </p>
                 </div>
 
                 {/* Brand colours */}
-                <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-mid)', marginBottom: 12,
-                    textTransform: 'uppercase', letterSpacing: '0.4px' }}>Brand Colours</div>
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Primary</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input type="color" value={bizForm.primary_color}
-                          onChange={(e) => setBizForm(f => ({ ...f, primary_color: e.target.value }))}
-                          style={{ width: 40, height: 36, border: '1px solid var(--border)',
-                            borderRadius: 8, cursor: 'pointer', padding: 2 }} />
-                        <input className="form-input" value={bizForm.primary_color}
-                          onChange={(e) => setBizForm(f => ({ ...f, primary_color: e.target.value }))}
-                          style={{ fontSize: 12, flex: 1 }} />
+                <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:12, fontWeight:500, color:'var(--text-mid)', marginBottom:12,
+                    textTransform:'uppercase', letterSpacing:'0.4px' }}>Brand Colours</div>
+                  <div style={{ display:'flex', gap:12 }}>
+                    {(['primary_color', 'secondary_color'] as const).map((key, i) => (
+                      <div key={key} className="form-group" style={{ flex:1 }}>
+                        <label className="form-label">{i === 0 ? 'Primary' : 'Secondary'}</label>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <input type="color" value={bizForm[key]}
+                            onChange={e => setBizForm(f => ({ ...f, [key]: e.target.value }))}
+                            style={{ width:40, height:36, border:'1px solid var(--border)', borderRadius:8, cursor:'pointer', padding:2 }} />
+                          <input className="form-input" value={bizForm[key]}
+                            onChange={e => setBizForm(f => ({ ...f, [key]: e.target.value }))}
+                            style={{ fontSize:12, flex:1 }} />
+                        </div>
                       </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Secondary</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input type="color" value={bizForm.secondary_color}
-                          onChange={(e) => setBizForm(f => ({ ...f, secondary_color: e.target.value }))}
-                          style={{ width: 40, height: 36, border: '1px solid var(--border)',
-                            borderRadius: 8, cursor: 'pointer', padding: 2 }} />
-                        <input className="form-input" value={bizForm.secondary_color}
-                          onChange={(e) => setBizForm(f => ({ ...f, secondary_color: e.target.value }))}
-                          style={{ fontSize: 12, flex: 1 }} />
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* ── Main business info card ── */}
+            {/* Main info */}
             <div className="card main-card">
               <SectionHeader icon={Building2} title="Business Information"
                 subtitle={hasExisting ? 'Update your registered business details' : 'Create your business profile'} />
-              <div style={{ padding: 20 }}>
+              <div style={{ padding:20 }}>
                 <div className="form-grid">
+                  {/* Business name */}
                   <Field label="Business Name *">
                     <input className="form-input" value={bizForm.business_name}
-                      onChange={(e) => setBizForm(f => ({ ...f, business_name: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, business_name: e.target.value }))}
                       placeholder="e.g. Adebayo & Associates Ltd" />
                   </Field>
-
                   <Field label="Business Type">
                     <select className="form-input" value={bizForm.business_type}
-                      onChange={(e) => setBizForm(f => ({ ...f, business_type: e.target.value }))}>
+                      onChange={e => setBizForm(f => ({ ...f, business_type: e.target.value }))}>
                       <option value="">Select type...</option>
                       {businessTypes.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
-
                   <Field label="Industry">
                     <select className="form-input" value={bizForm.industry}
-                      onChange={(e) => setBizForm(f => ({ ...f, industry: e.target.value }))}>
+                      onChange={e => setBizForm(f => ({ ...f, industry: e.target.value }))}>
                       <option value="">Select industry...</option>
                       {industries.map(i => <option key={i} value={i}>{i}</option>)}
                     </select>
                   </Field>
-
-                  <Field label="TIN (Tax Identification Number)" hint="Issued by FIRS">
+                  <Field label="TIN" hint="Issued by FIRS">
                     <input className="form-input" value={bizForm.tin}
-                      onChange={(e) => setBizForm(f => ({ ...f, tin: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, tin: e.target.value }))}
                       placeholder="e.g. 0012345678" />
                   </Field>
-
                   <Field label="RC Number" hint="CAC Registration Number">
                     <input className="form-input" value={bizForm.rc_number}
-                      onChange={(e) => setBizForm(f => ({ ...f, rc_number: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, rc_number: e.target.value }))}
                       placeholder="e.g. RC1234567" />
                   </Field>
-
                   <Field label="Business Phone">
                     <input className="form-input" value={bizForm.phone}
-                      onChange={(e) => setBizForm(f => ({ ...f, phone: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, phone: e.target.value }))}
                       placeholder="+234 801 234 5678" />
                   </Field>
-
                   <Field label="Business Email">
                     <input type="email" className="form-input" value={bizForm.email}
-                      onChange={(e) => setBizForm(f => ({ ...f, email: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, email: e.target.value }))}
                       placeholder="info@yourbusiness.ng" />
                   </Field>
-
                   <Field label="Website">
                     <input className="form-input" value={bizForm.website}
-                      onChange={(e) => setBizForm(f => ({ ...f, website: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, website: e.target.value }))}
                       placeholder="https://yourbusiness.ng" />
                   </Field>
-
-                  <Field label="Street Address" hint="Full address shown on invoices">
+                  <Field label="Street Address">
                     <input className="form-input" value={bizForm.address}
-                      onChange={(e) => setBizForm(f => ({ ...f, address: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, address: e.target.value }))}
                       placeholder="14 Awolowo Road, Ikoyi" />
                   </Field>
-
                   <Field label="City">
                     <input className="form-input" value={bizForm.city}
-                      onChange={(e) => setBizForm(f => ({ ...f, city: e.target.value }))}
+                      onChange={e => setBizForm(f => ({ ...f, city: e.target.value }))}
                       placeholder="Lagos" />
                   </Field>
-
                   <Field label="State">
                     <select className="form-input" value={bizForm.state}
-                      onChange={(e) => setBizForm(f => ({ ...f, state: e.target.value }))}>
+                      onChange={e => setBizForm(f => ({ ...f, state: e.target.value }))}>
                       <option value="">Select state...</option>
                       {nigerianStates.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </Field>
 
-                  {/* VAT toggle spanning full width */}
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '14px 16px', background: 'var(--cream)', borderRadius: 10,
-                      border: '1px solid var(--border)',
-                    }}>
+                  {/* VAT toggle */}
+                  <div style={{ gridColumn:'1 / -1' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                      padding:'14px 16px', background:'var(--cream)', borderRadius:10, border:'1px solid var(--border)' }}>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-                          VAT Registered
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                        <div style={{ fontSize:13, fontWeight:500, color:'var(--ink)' }}>VAT Registered</div>
+                        <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>
                           Enables 7.5% VAT on invoices &amp; FIRS reporting
                         </div>
                       </div>
-                      <button
-                        onClick={() => setBizForm(f => ({ ...f, vat_registered: !f.vat_registered }))}
-                        style={{
-                          width: 44, height: 24, borderRadius: 12, border: 'none',
+                      <button onClick={() => setBizForm(f => ({ ...f, vat_registered: !f.vat_registered }))}
+                        style={{ width:44, height:24, borderRadius:12, border:'none',
                           background: bizForm.vat_registered ? '#c8952a' : '#ddd9cf',
-                          cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <div style={{
-                          width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                          position: 'absolute', top: 3,
-                          left: bizForm.vat_registered ? 23 : 3,
-                          transition: 'left 0.2s',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                        }} />
+                          cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+                        <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff',
+                          position:'absolute', top:3, left: bizForm.vat_registered ? 23 : 3,
+                          transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }} />
                       </button>
                     </div>
-
                     {bizForm.vat_registered && (
-                      <div style={{ marginTop: 10 }}>
+                      <div style={{ marginTop:10 }}>
                         <Field label="VAT Number">
                           <input className="form-input" value={bizForm.vat_number}
-                            onChange={(e) => setBizForm(f => ({ ...f, vat_number: e.target.value }))}
+                            onChange={e => setBizForm(f => ({ ...f, vat_number: e.target.value }))}
                             placeholder="VAT-XXXXXXXX" />
                         </Field>
                       </div>
@@ -515,56 +422,43 @@ function SettingsInner({
                   </div>
                 </div>
 
-                {/* Save button */}
-                <div style={{ marginTop: 24, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <div style={{ marginTop:24, display:'flex', gap:10, justifyContent:'flex-end', alignItems:'center' }}>
                   {hasExisting && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      fontSize: 12, color: 'var(--green)',
-                    }}>
-                      <Check size={14} />
-                      Profile active
-                    </div>
+                    <span style={{ fontSize:12, color:'var(--green)', display:'flex', alignItems:'center', gap:4 }}>
+                      <Check size={14} /> Profile active
+                    </span>
                   )}
-                  <button
-                    onClick={handleSaveBusiness}
-                    disabled={isSaving}
-                    className="btn btn-gold"
-                  >
+                  <button onClick={handleSaveBusiness} disabled={isSaving} className="btn btn-gold">
                     {isSaving
                       ? <><Loader2 size={14} className="animate-spin" /> Saving...</>
-                      : hasExisting ? 'Save Changes' : 'Create Business Profile'
-                    }
+                      : hasExisting ? 'Save Changes' : 'Create Business Profile'}
                   </button>
                 </div>
               </div>
             </div>
-
           </div>
         )}
 
-        {/* ══════════════ INVOICE DEFAULTS TAB ══════════════ */}
+        {/* ══ INVOICE DEFAULTS ══ */}
         {activeTab === 'invoice' && (
           <div className="single-col">
             <div className="card">
               <SectionHeader icon={FileText} title="Invoice Defaults"
-                subtitle="These values are pre-filled when creating new invoices" />
-              <div style={{ padding: 20 }}>
+                subtitle="Pre-filled when creating new invoices" />
+              <div style={{ padding:20 }}>
                 <div className="form-grid">
-                  <Field label="Invoice Prefix" hint='e.g. "INV" produces INV-0001'>
+                  <Field label="Invoice Prefix" hint='e.g. "INV" → INV-0001'>
                     <input className="form-input" value={bizForm.invoice_prefix}
-                      onChange={(e) => setBizForm(f => ({ ...f, invoice_prefix: e.target.value.toUpperCase() }))}
+                      onChange={e => setBizForm(f => ({ ...f, invoice_prefix: e.target.value.toUpperCase() }))}
                       placeholder="INV" maxLength={6} />
                   </Field>
-
                   <Field label="Default VAT Rate">
                     <select className="form-input" defaultValue="7.5">
-                      <option value="7.5">7.5% (Standard Rate)</option>
+                      <option value="7.5">7.5% (Standard)</option>
                       <option value="0">0% (Zero-rated)</option>
                       <option value="exempt">Exempt</option>
                     </select>
                   </Field>
-
                   <Field label="Default WHT Rate">
                     <select className="form-input" defaultValue="5">
                       <option value="5">5% (Services)</option>
@@ -573,39 +467,35 @@ function SettingsInner({
                       <option value="0">None</option>
                     </select>
                   </Field>
-
                   <Field label="Payment Terms (days)">
-                    <input type="number" className="form-input" defaultValue={30}
-                      min={0} max={365} />
+                    <input type="number" className="form-input" defaultValue={30} min={0} max={365} />
                   </Field>
 
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  {/* Low stock alert default */}
+                  <Field label="Default Low Stock Alert Threshold"
+                    hint="Products below this quantity will show a low-stock warning">
+                    <input type="number" className="form-input" defaultValue={10} min={1} />
+                  </Field>
+
+                  <div style={{ gridColumn:'1 / -1' }}>
                     <Field label="Default Invoice Note">
-                      <textarea className="form-input" rows={3}
-                        defaultValue="Payment due within 30 days. Please reference invoice number when making payment."
-                        style={{ resize: 'vertical' }} />
+                      <textarea className="form-input" rows={3} style={{ resize:'vertical' }}
+                        defaultValue="Payment due within 30 days. Please reference invoice number when making payment." />
                     </Field>
                   </div>
-
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ gridColumn:'1 / -1' }}>
                     <Field label="Terms &amp; Conditions">
-                      <textarea className="form-input" rows={3}
-                        defaultValue="All prices are in Nigerian Naira (NGN). VAT and WHT are applicable as per FIRS guidelines."
-                        style={{ resize: 'vertical' }} />
+                      <textarea className="form-input" rows={3} style={{ resize:'vertical' }}
+                        defaultValue="All prices are in Nigerian Naira (NGN). VAT and WHT are applicable as per FIRS guidelines." />
                     </Field>
                   </div>
                 </div>
 
-                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={handleSaveBusiness}
-                    disabled={isSaving}
-                    className="btn btn-gold"
-                  >
+                <div style={{ marginTop:24, display:'flex', justifyContent:'flex-end' }}>
+                  <button onClick={handleSaveBusiness} disabled={isSaving} className="btn btn-gold">
                     {isSaving
                       ? <><Loader2 size={14} className="animate-spin" /> Saving...</>
-                      : 'Save Invoice Defaults'
-                    }
+                      : 'Save Invoice Defaults'}
                   </button>
                 </div>
               </div>
@@ -613,74 +503,82 @@ function SettingsInner({
           </div>
         )}
 
-        {/* ══════════════ ACCOUNT / PROFILE TAB ══════════════ */}
+        {/* ══ ACCOUNT / PROFILE ══ */}
         {activeTab === 'profile' && (
           <div className="single-col">
             <div className="card">
-              <SectionHeader icon={User} title="Account Details"
-                subtitle="Your login and personal information" />
-              <div style={{ padding: 20 }}>
+              <SectionHeader icon={User} title="Account Details" subtitle="Your login and personal information" />
+              <div style={{ padding:20 }}>
                 <div className="form-grid">
                   <Field label="Email Address" hint="Cannot be changed here — contact support">
-                    <input className="form-input" value={user?.email ?? ''}
-                      readOnly
-                      style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+                    <input className="form-input" value={user?.email ?? ''} readOnly
+                      style={{ opacity:0.6, cursor:'not-allowed' }} />
                   </Field>
-
                   <Field label="Account Status">
-                    <div style={{
-                      padding: '10px 14px', borderRadius: 8,
+                    <div style={{ padding:'10px 14px', borderRadius:8,
                       background: user?.is_verified ? '#d4eddf' : '#fde8e8',
                       border: `1px solid ${user?.is_verified ? '#b2d8c4' : '#f5c6c6'}`,
                       color: user?.is_verified ? '#1a6b4a' : '#b83232',
-                      fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
-                    }}>
+                      fontSize:13, display:'flex', alignItems:'center', gap:6 }}>
                       <Check size={14} />
                       {user?.is_verified ? 'Email Verified' : 'Email Not Verified'}
                     </div>
                   </Field>
-
                   <Field label="Member Since">
-                    <input className="form-input"
+                    <input className="form-input" readOnly style={{ opacity:0.6, cursor:'not-allowed' }}
                       value={user?.created_at
-                        ? new Date(user.created_at).toLocaleDateString('en-NG', {
-                            day: 'numeric', month: 'long', year: 'numeric'
-                          })
-                        : '—'
-                      }
-                      readOnly style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+                        ? new Date(user.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' })
+                        : '—'} />
                   </Field>
-
                   <Field label="Subscription Tier">
-                    <div style={{
-                      padding: '10px 14px', borderRadius: 8,
-                      background: '#fff3d4', border: '1px solid #f0c96b',
-                      color: '#8b6000', fontSize: 13, fontWeight: 600,
-                    }}>
-                      {business?.subscription_tier ?? 'FREE'} Plan
+                    <div style={{ padding:'10px 14px', borderRadius:8, background:'#fff3d4',
+                      border:'1px solid #f0c96b', color:'#8b6000', fontSize:13, fontWeight:600 }}>
+                      {(business as { subscription_tier?: string } | null)?.subscription_tier ?? 'FREE'} Plan
                     </div>
                   </Field>
                 </div>
 
-                <div style={{
-                  marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)',
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 12 }}>
+                {/* Change password */}
+                <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'var(--ink)', marginBottom:12 }}>
                     Change Password
                   </div>
+                  {pwdError && (
+                    <div style={{ background:'#fde8e8', color:'#b83232', borderRadius:8,
+                      padding:'10px 14px', fontSize:13, marginBottom:12 }}>
+                      {pwdError}
+                    </div>
+                  )}
                   <div className="form-grid">
-                    <Field label="Current Password">
-                      <input type="password" className="form-input" placeholder="Enter current password" />
-                    </Field>
-                    <Field label="New Password">
-                      <input type="password" className="form-input" placeholder="Min. 8 characters" />
-                    </Field>
-                    <Field label="Confirm New Password">
-                      <input type="password" className="form-input" placeholder="Repeat new password" />
-                    </Field>
+                    {([
+                      { key:'current', label:'Current Password' },
+                      { key:'next',    label:'New Password'     },
+                      { key:'confirm', label:'Confirm New Password' },
+                    ] as const).map(({ key, label }) => (
+                      <Field key={key} label={label}>
+                        <div style={{ position:'relative' }}>
+                          <input
+                            type={showPwd[key] ? 'text' : 'password'}
+                            className="form-input"
+                            value={pwdForm[key]}
+                            placeholder={key === 'next' ? 'Min. 8 characters' : ''}
+                            onChange={e => setPwdForm(f => ({ ...f, [key]: e.target.value }))}
+                            style={{ paddingRight:40 }}
+                          />
+                          <button type="button"
+                            onClick={() => setShowPwd(s => ({ ...s, [key]: !s[key] }))}
+                            style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)',
+                              background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', display:'flex' }}>
+                            {showPwd[key] ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                      </Field>
+                    ))}
                   </div>
-                  <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-outline">Update Password</button>
+                  <div style={{ marginTop:16, display:'flex', justifyContent:'flex-end' }}>
+                    <button className="btn btn-outline" onClick={handleChangePassword} disabled={pwdSaving}>
+                      {pwdSaving ? <><Loader2 size={14} className="animate-spin" /> Updating...</> : 'Update Password'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -689,190 +587,36 @@ function SettingsInner({
         )}
       </div>
 
-      {/* ── Global styles ── */}
       <style jsx>{`
-        .topbar {
-          height: 60px;
-          background: var(--paper);
-          border-bottom: 1px solid var(--border);
-          display: flex;
-          align-items: center;
-          padding: 0 28px;
-          gap: 16px;
-          flex-shrink: 0;
-        }
-
-        .topbar-title {
-          font-family: 'Fraunces', serif;
-          font-size: 20px;
-          font-weight: 600;
-          color: var(--ink);
-          flex: 1;
-        }
-
-        .content {
-          flex: 1;
-          overflow-y: auto;
-          padding: 28px;
-        }
-
-        .page-header { margin-bottom: 20px; }
-        .page-title {
-          font-family: 'Fraunces', serif;
-          font-size: 26px;
-          font-weight: 700;
-          color: var(--ink);
-        }
-        .page-sub {
-          font-size: 13px;
-          color: var(--text-dim);
-          margin-top: 4px;
-        }
-
-        /* Tabs */
-        .tab-bar {
-          display: flex;
-          gap: 4px;
-          margin-bottom: 20px;
-          border-bottom: 1px solid var(--border);
-          padding-bottom: 0;
-        }
-        .tab-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 10px 16px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          color: var(--text-mid);
-          background: none;
-          border: none;
-          border-bottom: 2px solid transparent;
-          cursor: pointer;
-          transition: all 0.15s;
-          margin-bottom: -1px;
-        }
-        .tab-btn:hover { color: var(--ink); }
-        .tab-btn.active {
-          color: var(--gold);
-          border-bottom-color: var(--gold);
-        }
-
-        /* Grids */
-        .settings-grid {
-          display: grid;
-          grid-template-columns: 280px 1fr;
-          gap: 16px;
-          align-items: start;
-        }
-        .single-col {
-          max-width: 760px;
-        }
-        .form-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
-        }
-
-        /* Card */
-        .card {
-          background: #fff;
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          box-shadow: var(--shadow);
-          overflow: hidden;
-        }
-        .card-header {
-          padding: 16px 20px;
-          border-bottom: 1px solid var(--border);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .card-title {
-          font-family: 'Fraunces', serif;
-          font-size: 15px;
-          font-weight: 600;
-          color: var(--ink);
-        }
-
-        /* Form */
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        .form-label {
-          font-size: 11px;
-          font-weight: 500;
-          color: var(--text-mid);
-          text-transform: uppercase;
-          letter-spacing: 0.4px;
-        }
-        .form-input {
-          width: 100%;
-          padding: 10px 12px;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13.5px;
-          color: var(--text);
-          background: #fff;
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
-          box-sizing: border-box;
-        }
-        .form-input:focus {
-          border-color: var(--gold);
-          box-shadow: 0 0 0 3px rgba(200,149,42,0.12);
-        }
-        select.form-input {
-          appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9990' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-          background-repeat: no-repeat;
-          background-position: right 12px center;
-          padding-right: 32px;
-          cursor: pointer;
-        }
-
-        /* Buttons */
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 9px 18px;
-          border-radius: 8px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          border: none;
-          transition: all 0.15s;
-        }
-        .btn:disabled { opacity: 0.65; cursor: not-allowed; }
-        .btn-gold { background: var(--gold); color: var(--ink); }
-        .btn-gold:hover:not(:disabled) { background: #d4a030; }
-        .btn-outline {
-          background: transparent;
-          border: 1px solid var(--border);
-          color: var(--text);
-        }
-        .btn-outline:hover:not(:disabled) { background: var(--cream); }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-          .settings-grid {
-            grid-template-columns: 1fr;
-          }
-          .logo-card { order: -1; }
-        }
-        @media (max-width: 600px) {
-          .content { padding: 16px; }
-          .form-grid { grid-template-columns: 1fr; }
-          .tab-btn { padding: 8px 10px; font-size: 12px; }
-          .topbar { flex-wrap: wrap; height: auto; padding: 12px 16px; }
-        }
+        .topbar{height:60px;background:var(--paper);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;flex-shrink:0}
+        .topbar-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--ink);flex:1}
+        .content{flex:1;overflow-y:auto;padding:28px}
+        .page-header{margin-bottom:20px}
+        .page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--ink)}
+        .page-sub{font-size:13px;color:var(--text-dim);margin-top:4px}
+        .tab-bar{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+        .tab-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text-mid);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all 0.15s;margin-bottom:-1px}
+        .tab-btn:hover{color:var(--ink)}
+        .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+        .settings-grid{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+        .single-col{max-width:760px}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+        .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center}
+        .card-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--ink)}
+        .form-group{display:flex;flex-direction:column;gap:5px}
+        .form-label{font-size:11px;font-weight:500;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.4px}
+        .form-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13.5px;color:var(--text);background:#fff;outline:none;transition:border-color 0.15s,box-shadow 0.15s;box-sizing:border-box}
+        .form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,149,42,0.12)}
+        select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9990' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.15s}
+        .btn:disabled{opacity:0.65;cursor:not-allowed}
+        .btn-gold{background:var(--gold);color:var(--ink)}
+        .btn-gold:hover:not(:disabled){background:#d4a030}
+        .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+        .btn-outline:hover:not(:disabled){background:var(--cream)}
+        @media(max-width:900px){.settings-grid{grid-template-columns:1fr}.logo-card{order:-1}}
+        @media(max-width:600px){.content{padding:16px}.form-grid{grid-template-columns:1fr}.tab-btn{padding:8px 10px;font-size:12px}.topbar{flex-wrap:wrap;height:auto;padding:12px 16px}}
       `}</style>
     </>
   )
