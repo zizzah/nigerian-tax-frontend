@@ -81,22 +81,43 @@ export default function ReportsPage() {
   const [to, setTo]             = useState(PRESETS[0].to)
   const [showPresets, setShowPresets] = useState(false)
 
-  // Fetch all invoices in range (large limit — reports need full data)
-  const { data: allInvData, isLoading: invLoading } = useInvoices({ page_size: 500 })
-  const { data: productsData, isLoading: prodLoading } = useProducts({ limit: 200 })
-  const { data: customersData } = useCustomers({ limit: 200 })
+  // Invoices: backend caps page_size at 100, so fetch p1 + p2 to cover up to 200 invoices.
+  // We also pass from_date/to_date so the backend filters server-side — avoids 422 from page_size>100.
+  const invParams = { page_size: 100, from_date: from, to_date: to }
+  const { data: invPage1, isLoading: invLoading1 } = useInvoices({ ...invParams, page: 1 })
+  const { data: invPage2, isLoading: invLoading2 } = useInvoices({ ...invParams, page: 2 })
+  // For aged receivables we need ALL unpaid invoices regardless of date range
+  const { data: allUnpaidData } = useInvoices({ page_size: 100, status: 'OVERDUE', page: 1 })
+  const { data: allSentData }   = useInvoices({ page_size: 100, status: 'SENT',    page: 1 })
+  const { data: allPartialData }= useInvoices({ page_size: 100, status: 'PARTIALLY_PAID', page: 1 })
 
-  const allInvoices: Invoice[] = allInvData?.invoices ?? []
+  const { data: productsData, isLoading: prodLoading } = useProducts({ limit: 100 })
+  // Customers: backend uses skip/limit (not page_size)
+  const { data: customersData } = useCustomers({ skip: 0, limit: 100 })
+
+  const allInvoices: Invoice[] = [
+    ...(invPage1?.invoices ?? []),
+    ...(invPage2?.invoices ?? []),
+  ]
+  // Deduplicate by id (pages may overlap near boundaries)
+  const invoices = useMemo(() => {
+    const seen = new Set<string>()
+    return allInvoices.filter(inv => {
+      if (seen.has(inv.id)) return false
+      seen.add(inv.id)
+      return true
+    })
+  }, [invPage1, invPage2])
+
+  const allUnpaidInvoices: Invoice[] = [
+    ...(allUnpaidData?.invoices  ?? []),
+    ...(allSentData?.invoices    ?? []),
+    ...(allPartialData?.invoices ?? []),
+  ]
+
   const customerMap = Object.fromEntries(
     (customersData?.customers ?? []).map(c => [c.id, c.name])
   )
-
-  // Filter invoices by date range
-  const invoices = useMemo(() =>
-    allInvoices.filter(inv => {
-      const d = inv.issue_date?.slice(0, 10) ?? ''
-      return d >= from && d <= to
-    }), [allInvoices, from, to])
 
   const applyPreset = (p: typeof PRESETS[0]) => {
     setPreset(p); setFrom(p.from); setTo(p.to); setShowPresets(false)
@@ -125,7 +146,8 @@ export default function ReportsPage() {
     }
     const months = Object.entries(byMonth).sort(([a], [b]) => a.localeCompare(b))
 
-    return { totalInvoiced, totalCollected, totalOutstanding, totalDiscount, totalTax, subtotal, overdueAmount, months }
+    const count = nonCancelledInvoices.length
+    return { totalInvoiced, totalCollected, totalOutstanding, totalDiscount, totalTax, subtotal, overdueAmount, months, count }
   }, [invoices])
 
   // ─── VAT data ──────────────────────────────────────────────────────────────
@@ -152,9 +174,8 @@ export default function ReportsPage() {
 
   // ─── Aged Receivables ──────────────────────────────────────────────────────
   const agedData = useMemo(() => {
-    const unpaid = allInvoices.filter(i =>
-      ['SENT', 'OVERDUE', 'PARTIALLY_PAID'].includes(i.status) && n(i.outstanding_amount) > 0
-    )
+    // Use dedicated unpaid fetches (not date-filtered) so aged report shows all outstanding
+    const unpaid = allUnpaidInvoices.filter(i => n(i.outstanding_amount) > 0)
     const buckets = { current: 0, d30: 0, d60: 0, d90: 0, over90: 0 }
     const rows = unpaid.map(inv => {
       const due = inv.due_date ? new Date(inv.due_date) : new Date()
@@ -177,7 +198,7 @@ export default function ReportsPage() {
 
     const total = Object.values(buckets).reduce((s, v) => s + v, 0)
     return { buckets, rows, total }
-  }, [allInvoices, customerMap])
+  }, [allUnpaidInvoices, customerMap])
 
   // ─── Product Sales ─────────────────────────────────────────────────────────
   const productData = useMemo(() => {
@@ -189,15 +210,15 @@ export default function ReportsPage() {
         name:        p.name,
         sku:         p.sku ?? '—',
         category:    p.category ?? '—',
-        unit_price:  p.unit_price,
-        usage_count: p.usage_count,
-        revenue:     p.unit_price * p.usage_count,
+        unit_price:  n(p.unit_price),
+        usage_count: p.usage_count ?? 0,
+        revenue:     n(p.unit_price) * (p.usage_count ?? 0),
         stock:       p.track_inventory ? (p.quantity_in_stock ?? 0) : null,
         last_used:   p.last_used_at,
       }))
   }, [productsData])
 
-  const isLoading = invLoading || prodLoading
+  const isLoading = invLoading1 || invLoading2 || prodLoading
 
   // ─── Style tokens ──────────────────────────────────────────────────────────
   const S = {
@@ -321,7 +342,7 @@ export default function ReportsPage() {
             {/* KPIs */}
             <div style={S.kpiWrap}>
               {[
-                { label:'Total Invoiced',    val: fmt(plData.totalInvoiced),    sub:`${invoices.filter(i => i.status !== 'CANCELLED').length} invoices` },
+                { label:'Total Invoiced',    val: fmt(plData.totalInvoiced),    sub:`${plData.count} invoices` },
                 { label:'Revenue Collected', val: fmt(plData.totalCollected),   sub:`${Math.round(plData.totalCollected / (plData.totalInvoiced || 1) * 100)}% collection rate`, gold: true },
                 { label:'Outstanding',       val: fmt(plData.totalOutstanding), sub:'Unpaid balance' },
                 { label:'Overdue',           val: fmt(plData.overdueAmount),    sub:'Past due date', red: plData.overdueAmount > 0 },
@@ -370,7 +391,7 @@ export default function ReportsPage() {
                   <tfoot>
                     <tr>
                       <td style={S.sumL}>Total</td>
-                      <td style={S.sum}>{nonCancelledInvoices.length}</td>
+                      <td style={S.sum}>{plData.count}</td>
                       <td style={S.sum}>{fmt(plData.subtotal)}</td>
                       <td style={S.sum}>{fmt(plData.totalDiscount)}</td>
                       <td style={S.sum}>{fmt(plData.totalTax)}</td>
@@ -567,7 +588,7 @@ export default function ReportsPage() {
               </div>
               <button style={S.btnGold} onClick={() => downloadCSV(
                 `product-sales-${iso(today)}.csv`,
-                productData.map(p => [p.name, p.sku, p.category, p.unit_price.toFixed(2), p.usage_count, p.revenue.toFixed(2), p.stock ?? 'N/A', fmtDate(p.last_used)]),
+                productData.map(p => [p.name, p.sku, p.category, n(p.unit_price).toFixed(2), p.usage_count, n(p.revenue).toFixed(2), p.stock ?? 'N/A', fmtDate(p.last_used ?? null)]),
                 ['Product','SKU','Category','Unit Price (₦)','Times Sold','Est. Revenue (₦)','Stock','Last Used']
               )}>
                 <Download size={13} /> CSV

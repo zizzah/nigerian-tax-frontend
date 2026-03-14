@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Loader2, Upload, Building2, User, FileText, Camera, Check, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Upload, Building2, User, FileText, Camera, Check, AlertCircle, Eye, EyeOff, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBusiness, useCreateBusiness, useUpdateBusiness, useUploadLogo } from '@/lib/hooks/useBusiness'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -85,7 +85,7 @@ function buildFormDefaults(business?: import('@/lib/types').Business | null) {
 export default function SettingsPage() {
   const { data: business, isLoading } = useBusiness()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<'business' | 'invoice' | 'profile'>('business')
+  const [activeTab, setActiveTab] = useState<'business' | 'invoice' | 'payments' | 'profile'>('business')
 
   if (isLoading) {
     return (
@@ -117,8 +117,8 @@ function SettingsInner({
 }: {
   business: import('@/lib/types').Business | null
   user: import('@/lib/types').User | null
-  activeTab: 'business' | 'invoice' | 'profile'
-  setActiveTab: (t: 'business' | 'invoice' | 'profile') => void
+  activeTab: 'business' | 'invoice' | 'payments' | 'profile'
+  setActiveTab: (t: 'business' | 'invoice' | 'payments' | 'profile') => void
 }) {
   const createBiz  = useCreateBusiness()
   const updateBiz  = useUpdateBusiness()
@@ -133,6 +133,10 @@ function SettingsInner({
   const [showPwd, setShowPwd]       = useState({ current: false, next: false, confirm: false })
   const [pwdError, setPwdError]     = useState<string | null>(null)
   const [pwdSaving, setPwdSaving]   = useState(false)
+
+  // Paystack keys state
+  const [paystackForm, setPaystackForm] = useState({ public_key: '', secret_key: '' })
+  const [paystackSaving, setPaystackSaving] = useState(false)
 
   const hasExisting = !!business
   const isSaving    = createBiz.isPending || updateBiz.isPending
@@ -249,6 +253,7 @@ function SettingsInner({
           {([
             { key: 'business', label: 'Business Profile', icon: Building2 },
             { key: 'invoice',  label: 'Invoice Defaults', icon: FileText  },
+            { key: 'payments', label: 'Payments',          icon: CreditCard },
             { key: 'profile',  label: 'Account',          icon: User      },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setActiveTab(key)}
@@ -317,6 +322,73 @@ function SettingsInner({
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Live invoice preview */}
+                  <div style={{ marginTop:20 }}>
+                    <div style={{ fontSize:11, fontWeight:500, color:'var(--text-dim)',
+                      textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:10 }}>
+                      Invoice Preview
+                    </div>
+                    <div style={{ border:'1px solid var(--border)', borderRadius:10, overflow:'hidden',
+                      fontSize:11, background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
+                      {/* Preview header bar */}
+                      <div style={{ background: bizForm.primary_color, padding:'14px 18px',
+                        display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <div style={{ color:'#fff', fontWeight:700, fontSize:13 }}>
+                          {bizForm.business_name || 'Your Business'}
+                        </div>
+                        <div style={{ color:'#fff', opacity:0.9, fontSize:11, letterSpacing:'1px' }}>
+                          INVOICE
+                        </div>
+                      </div>
+                      {/* Preview meta strip */}
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)',
+                        background: bizForm.secondary_color }}>
+                        {['Issue Date', 'Due Date', 'Status'].map(l => (
+                          <div key={l} style={{ padding:'8px 12px' }}>
+                            <div style={{ fontSize:7.5, color:'rgba(255,255,255,0.7)',
+                              textTransform:'uppercase', letterSpacing:'0.5px' }}>{l}</div>
+                            <div style={{ fontSize:10, color:'#fff', fontWeight:600, marginTop:2 }}>
+                              {l === 'Status' ? 'SENT' : l === 'Issue Date' ? '01 Mar 2026' : '31 Mar 2026'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Preview table header */}
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto',
+                        background: bizForm.primary_color, padding:'6px 12px', gap:16 }}>
+                        {['Description', 'Qty', 'Amount'].map(h => (
+                          <div key={h} style={{ fontSize:8, color:'#fff',
+                            fontWeight:600, textTransform:'uppercase' }}>{h}</div>
+                        ))}
+                      </div>
+                      {/* Preview rows */}
+                      {[
+                        ['Consulting Services', '2', '₦50,000'],
+                        ['VAT (7.5%)', '', '₦3,750'],
+                      ].map(([d, q, a], i) => (
+                        <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto auto',
+                          padding:'6px 12px', gap:16,
+                          background: i % 2 === 0 ? '#fff' : bizForm.primary_color + '12' }}>
+                          <div style={{ fontSize:9, color:'#2c2a24' }}>{d}</div>
+                          <div style={{ fontSize:9, color:'#6b6560', minWidth:24, textAlign:'right' }}>{q}</div>
+                          <div style={{ fontSize:9, color:'#2c2a24', minWidth:60, textAlign:'right' }}>{a}</div>
+                        </div>
+                      ))}
+                      {/* Preview total */}
+                      <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center',
+                        gap:16, padding:'8px 12px', borderTop:`2px solid ${bizForm.primary_color}` }}>
+                        <div style={{ fontSize:10, fontWeight:600, color:'#6b6560' }}>TOTAL DUE</div>
+                        <div style={{ fontSize:13, fontWeight:700, color: bizForm.primary_color }}>
+                          ₦53,750
+                        </div>
+                      </div>
+                      <div style={{ padding:'8px 12px', textAlign:'center', fontSize:8,
+                        color:'#9e9990', borderTop:'1px solid #f0ede6' }}>
+                        Thank you for your business!
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -498,6 +570,114 @@ function SettingsInner({
                       : 'Save Invoice Defaults'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* ══ PAYMENTS / PAYSTACK ══ */}
+        {activeTab === 'payments' && (
+          <div className="single-col">
+            <div className="card">
+              <SectionHeader icon={CreditCard} title="Paystack Integration"
+                subtitle="Accept online payments from customers via invoice payment links" />
+              <div style={{ padding:20 }}>
+
+                {/* How it works */}
+                <div style={{ background:'#faf9f6', borderRadius:8, padding:'14px 16px',
+                  marginBottom:24, borderLeft:'3px solid #c8952a' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#2c2a24',
+                    textTransform:'uppercase' as const, letterSpacing:'0.5px', marginBottom:8 }}>
+                    How it works
+                  </div>
+                  <ol style={{ fontSize:13, color:'#6b6560', paddingLeft:16, lineHeight:'1.8' }}>
+                    <li>Add your Paystack API keys below and click Save</li>
+                    <li>Open any sent invoice and click <strong>Payment Link</strong></li>
+                    <li>Share the link — it&apos;s included automatically in reminder emails</li>
+                    <li>Customer pays online — invoice is automatically marked <strong>PAID</strong></li>
+                  </ol>
+                </div>
+
+                <div className="form-grid">
+                  <Field label="Paystack Public Key"
+                    hint="Starts with pk_test_ or pk_live_ — safe to use in frontend">
+                    <input className="field-input" type="text"
+                      placeholder="sk_test_..."
+                      value={paystackForm.public_key}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setPaystackForm(f => ({ ...f, public_key: e.target.value }))} />
+                  </Field>
+                  <Field label="Paystack Secret Key"
+                    hint="Starts with sk_test_ or sk_live_ — keep this private">
+                    <input className="field-input" type="password"
+                      placeholder="sk_test_..."
+                      value={paystackForm.secret_key}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setPaystackForm(f => ({ ...f, secret_key: e.target.value }))} />
+                  </Field>
+                </div>
+
+                <div style={{ background:'#fff8e8', border:'1px solid #f5d87a', borderRadius:8,
+                  padding:'12px 16px', fontSize:13, color:'#7a5c00', marginTop:8, marginBottom:20 }}>
+                  <strong>Where to find your keys:</strong> Log in to{' '}
+                  <a href="https://dashboard.paystack.com/#/settings/developer"
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ color:'#c8952a', textDecoration:'underline' }}>
+                    dashboard.paystack.com
+                  </a>
+                  {' '}→ Settings → API Keys &amp; Webhooks.
+                  Use <strong>Test keys</strong> during development, switch to <strong>Live keys</strong> when ready.
+                </div>
+
+                <div style={{ background:'#faf9f6', borderRadius:8, padding:'12px 16px',
+                  fontSize:13, color:'#6b6560', marginBottom:20 }}>
+                  <strong style={{ color:'#0f0e0b' }}>Webhook URL</strong> — paste this into your Paystack
+                  dashboard under Settings → Webhooks so payments auto-record:<br/>
+                  <code style={{ fontFamily:'monospace', fontSize:12, background:'#fff',
+                    padding:'3px 8px', borderRadius:4, marginTop:6, display:'inline-block',
+                    color:'#2c2a24', border:'1px solid #e8e4da' }}>
+                    {`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://your-api.com'}/api/v1/paystack/webhook`}
+                  </code>
+                </div>
+
+                <button
+                  disabled={paystackSaving}
+                  onClick={async () => {
+                    if (!paystackForm.public_key && !paystackForm.secret_key) {
+                      toast.error('Enter at least one key to save')
+                      return
+                    }
+                    setPaystackSaving(true)
+                    try {
+                      const stored = localStorage.getItem('access_token')
+                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
+                      const res = await fetch(`${apiBase}/api/v1/businesses/me/paystack`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${stored ?? ''}`,
+                        },
+                        body: JSON.stringify(paystackForm),
+                      })
+                      if (res.ok) toast.success('Paystack keys saved')
+                      else {
+                        const err = await res.json() as { detail?: string }
+                        toast.error(err.detail ?? 'Failed to save keys')
+                      }
+                    } catch {
+                      toast.error('Failed to save keys — check your connection')
+                    } finally {
+                      setPaystackSaving(false)
+                    }
+                  }}
+                  style={{ padding:'10px 24px', background:'var(--gold)', color:'#fff',
+                    border:'none', borderRadius:8, fontSize:14, fontWeight:600,
+                    cursor: paystackSaving ? 'not-allowed' : 'pointer',
+                    opacity: paystackSaving ? 0.7 : 1 }}>
+                  {paystackSaving ? 'Saving…' : 'Save Paystack Keys'}
+                </button>
+
               </div>
             </div>
           </div>

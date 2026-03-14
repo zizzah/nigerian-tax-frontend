@@ -4,7 +4,7 @@ import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Loader2, Printer, Send, Plus, Trash2, CheckCircle,
-  Download, Mail, Copy, X,
+  Download, Mail, Copy, X, Link, ExternalLink,
 } from 'lucide-react'
 import {
   useInvoice, useFinalizeInvoice, useCancelInvoice,
@@ -15,6 +15,7 @@ import { useBusiness }        from '@/lib/hooks/useBusiness'
 import { useInvoicePayments, useCreatePayment, useDeletePayment } from '@/lib/hooks/usePayments'
 import { invoicesApi }        from '@/lib/api/invoice'
 import type { InvoiceItem, PaymentMethod } from '@/lib/types'
+import { toast } from 'sonner'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatCurrency = (amount: string | number) => {
@@ -279,10 +280,16 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [pdfLoading, setPdfLoading] = useState(false)
   const [pdfError,   setPdfError]   = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [payLink,    setPayLink]    = useState<string | null>(null)
+  const [payLinkLoading, setPayLinkLoading] = useState(false)
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: customer }     = useCustomer(invoice?.customer_id ?? '')
   const { data: business }     = useBusiness()
+
+  // Brand colours from business settings — fall back to app defaults
+  const primaryColor   = business?.primary_color   ?? '#c8952a'
+  const secondaryColor = business?.secondary_color ?? '#1a6b4a'
   const { data: paymentsData } = useInvoicePayments(id)
   const payments = paymentsData?.payments ?? []
 
@@ -296,6 +303,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const canPay      = invoice && ['SENT', 'OVERDUE', 'PARTIALLY_PAID'].includes(invoice.status) && outstanding > 0
   const canEmail    = invoice && ['SENT', 'OVERDUE', 'PARTIALLY_PAID', 'PAID'].includes(invoice.status)
   const isDraft     = invoice?.status === 'DRAFT'
+  const canPayLink  = invoice && ['SENT', 'OVERDUE', 'PARTIALLY_PAID'].includes(invoice.status)
 
   const handleFinalize = async () => {
     try { await finalizeInvoice.mutateAsync(id) } catch (e) { console.error(e) }
@@ -324,6 +332,30 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setActionError(detail ?? 'Failed to duplicate invoice.')
+    }
+  }
+
+  const handleGeneratePayLink = async () => {
+    setPayLinkLoading(true)
+    try {
+      const token = localStorage.getItem('access_token')
+      const API   = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+      const res   = await fetch(`${API}/api/v1/paystack/links/${id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token ?? ''}` },
+      })
+      const data = await res.json() as { detail?: string; payment_url?: string }
+      if (!res.ok) throw new Error(data.detail ?? 'Failed to generate link')
+      const url = data.payment_url ?? ''
+      setPayLink(url)
+      // Copy to clipboard
+      await navigator.clipboard.writeText(url)
+      toast.success('Payment link copied to clipboard!')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not generate payment link'
+      toast.error(msg)
+    } finally {
+      setPayLinkLoading(false)
     }
   }
 
@@ -403,6 +435,16 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             </button>
           )}
 
+          {/* Generate Payment Link */}
+          {canPayLink && (
+            <button className="btn btn-outline" onClick={handleGeneratePayLink}
+              disabled={payLinkLoading} title="Generate a payment link to share with your customer">
+              {payLinkLoading
+                ? <><Loader2 size={14} className="spin" /> Generating…</>
+                : <><Link size={14} /> Payment Link</>}
+            </button>
+          )}
+
           {/* Duplicate */}
           <button className="btn btn-outline" onClick={handleDuplicate} disabled={duplicateInvoice.isPending}
             title="Create a copy of this invoice as a new draft">
@@ -447,6 +489,39 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
+        {/* Payment link banner */}
+        {payLink && (
+          <div style={{ background:'#e8f4fd', border:'1px solid #b3d9f7', borderRadius:8,
+            padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center',
+            justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#1a5276' }}>
+              <Link size={15} />
+              <span><strong>Payment link ready</strong> — copied to clipboard</span>
+            </div>
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <code style={{ fontSize:11, background:'#fff', padding:'3px 8px', borderRadius:4,
+                color:'#2c2a24', border:'1px solid #d0e8f7', maxWidth:280,
+                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
+                {payLink}
+              </code>
+              <button onClick={() => { navigator.clipboard.writeText(payLink); toast.success('Copied!') }}
+                style={{ padding:'4px 10px', fontSize:12, background:'#1a5276', color:'#fff',
+                  border:'none', borderRadius:6, cursor:'pointer', whiteSpace:'nowrap' }}>
+                Copy
+              </button>
+              <a href={payLink} target="_blank" rel="noopener noreferrer"
+                style={{ padding:'4px 10px', fontSize:12, background:'none', color:'#1a5276',
+                  border:'1px solid #1a5276', borderRadius:6, textDecoration:'none',
+                  display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
+                <ExternalLink size={11} /> Preview
+              </a>
+              <button onClick={() => setPayLink(null)}
+                style={{ background:'none', border:'none', cursor:'pointer',
+                  color:'#6b6560', fontSize:16, lineHeight:1 }}>✕</button>
+            </div>
+          </div>
+        )}
+
         {/* Email sent badge */}
         {invoice.email_sent && (
           <div className="email-sent-badge">
@@ -456,7 +531,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
         <div className="invoice-container">
           {/* Header */}
-          <div className="invoice-header">
+          <div className="invoice-header" style={{ borderBottomColor: primaryColor }}>
             <div className="invoice-brand">
               {business?.logo_url && (
                 <img src={business.logo_url} alt="logo" style={{ height:52, marginBottom:8, objectFit:'contain' }} />
@@ -467,7 +542,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               {business?.tin   && <p className="company-detail">TIN: {business.tin}</p>}
             </div>
             <div className="invoice-info">
-              <h2 className="invoice-title">INVOICE</h2>
+              <h2 className="invoice-title" style={{ color: primaryColor }}>INVOICE</h2>
               <div className="invoice-meta">
                 {([
                   ['Invoice #', invoice.invoice_number],
@@ -512,8 +587,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
             <table className="items-table">
               <thead>
                 <tr>
-                  <th>Description</th><th>Qty</th><th>Unit Price</th>
-                  <th>Discount</th><th>Tax</th><th className="text-right">Amount</th>
+                  {['Description','Qty','Unit Price','Discount','Tax','Amount'].map((h, i) => (
+                    <th key={h} className={i === 5 ? 'text-right' : ''}
+                      style={{ background: secondaryColor, color: '#fff', borderBottom: `2px solid ${primaryColor}` }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -538,7 +617,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               <div className="totals-row"><span className="totals-label">Discount:</span><span className="totals-value">-{formatCurrency(invoice.discount_amount)}</span></div>
             )}
             <div className="totals-row"><span className="totals-label">VAT:</span><span className="totals-value">{formatCurrency(invoice.tax_amount)}</span></div>
-            <div className="totals-row grand-total"><span className="totals-label">Total:</span><span className="totals-value">{formatCurrency(invoice.total_amount)}</span></div>
+            <div className="totals-row grand-total" style={{ borderTopColor: primaryColor }}><span className="totals-label">Total:</span><span className="totals-value" style={{ color: primaryColor }}>{formatCurrency(invoice.total_amount)}</span></div>
             {parseFloat(invoice.paid_amount) > 0 && (<>
               <div className="totals-row paid"><span className="totals-label">Paid:</span><span className="totals-value">{formatCurrency(invoice.paid_amount)}</span></div>
               <div className="totals-row outstanding"><span className="totals-label">Outstanding:</span><span className="totals-value">{formatCurrency(invoice.outstanding_amount)}</span></div>
@@ -608,11 +687,11 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         .err-banner{background:#fde8e8;color:#b83232;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
         .email-sent-badge{display:inline-flex;align-items:center;gap:6px;background:#d4eddf;color:#1a6b4a;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;margin-bottom:12px}
         .invoice-container{max-width:800px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:12px;padding:40px;box-shadow:var(--shadow)}
-        .invoice-header{display:flex;justify-content:space-between;margin-bottom:40px;padding-bottom:20px;border-bottom:2px solid var(--gold)}
+        .invoice-header{display:flex;justify-content:space-between;margin-bottom:40px;padding-bottom:20px;border-bottom:2px solid currentColor}
         .company-name{font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--ink);margin:0 0 4px}
         .company-detail{color:var(--text-dim);font-size:12px;margin:2px 0}
         .invoice-info{text-align:right}
-        .invoice-title{font-family:'Fraunces',serif;font-size:32px;font-weight:700;color:var(--gold);margin:0 0 16px}
+        .invoice-title{font-family:'Fraunces',serif;font-size:32px;font-weight:700;margin:0 0 16px}
         .invoice-meta{display:flex;flex-direction:column;gap:6px}
         .meta-row{display:flex;justify-content:flex-end;gap:12px;font-size:13px}
         .meta-label{color:var(--text-dim)}
@@ -624,7 +703,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         .customer-details p{font-size:13px;color:var(--text);margin:2px 0}
         .items-section{margin-bottom:30px}
         .items-table{width:100%;border-collapse:collapse}
-        .items-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);padding:10px 12px;background:var(--cream);font-weight:500;border-bottom:1px solid var(--border)}
+        .items-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;padding:10px 12px;font-weight:500}
         .items-table td{padding:12px;border-bottom:1px solid #f0ede6;font-size:13px}
         .text-right{text-align:right}
         .text-dim{color:var(--text-dim);font-size:12px}
@@ -632,8 +711,8 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         .totals-row{display:flex;justify-content:space-between;width:260px;padding:6px 0;font-size:13px}
         .totals-label{color:var(--text-dim)}
         .totals-value{font-weight:500}
-        .totals-row.grand-total{border-top:2px solid var(--gold);margin-top:8px;padding-top:12px;font-size:16px;font-weight:700}
-        .totals-row.grand-total .totals-value{color:var(--gold)}
+        .totals-row.grand-total{border-top:2px solid currentColor;margin-top:8px;padding-top:12px;font-size:16px;font-weight:700}
+        .totals-row.grand-total .totals-value{color:inherit}
         .totals-row.paid .totals-value{color:#1a6b4a}
         .totals-row.outstanding .totals-value{color:#b83232;font-weight:700}
         .notes-section{padding:16px 20px;background:var(--cream);border-radius:8px;margin-bottom:24px}

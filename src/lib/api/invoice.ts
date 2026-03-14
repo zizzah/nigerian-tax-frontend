@@ -101,11 +101,17 @@ export const invoicesApi = {
     start_date?: string
     end_date?: string
   }): Promise<InvoiceStatsOverview> => {
-    const response = await apiClient.get<InvoiceListResponse>('/invoices/', {
-      params: { limit: 1000 },
+    // Backend caps page_size at 100 — fetch two pages to get up to 200 invoices for stats
+    const [r1, r2] = await Promise.all([
+      apiClient.get<InvoiceListResponse>('/invoices/', { params: { page_size: 100, page: 1 } }),
+      apiClient.get<InvoiceListResponse>('/invoices/', { params: { page_size: 100, page: 2 } }),
+    ])
+    const seen = new Set<string>()
+    const invoices = [...(r1.data.invoices ?? []), ...(r2.data.invoices ?? [])].filter(inv => {
+      if (seen.has(inv.id)) return false
+      seen.add(inv.id)
+      return true
     })
-
-    const invoices = response.data.invoices ?? []
     const total_invoices     = invoices.length
     const total_amount       = invoices.reduce((s, inv) => s + (parseFloat(inv.total_amount)       || 0), 0)
     const total_paid_amount  = invoices.filter(inv => inv.status === 'PAID')

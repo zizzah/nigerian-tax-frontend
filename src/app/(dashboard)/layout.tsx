@@ -11,6 +11,8 @@ import {
   CreditCard,
   FileScan,
   BarChart3,
+  PieChart,
+  Bell,
   Settings,
   Menu,
   X,
@@ -34,7 +36,8 @@ const navSections = [
     items: [
       { label: 'Documents', href: '/documents', icon: FileScan,  badge: null },
       { label: 'Analytics', href: '/analytics', icon: BarChart3, badge: null },
-      {label:'Reports', href: '/reports', icon: BarChart3, badge: null },
+      { label: 'Reports',  href: '/reports',  icon: PieChart,  badge: null },
+      { label: 'Reminders', href: '/reminders', icon: Bell,     badge: null },
     ],
   },
   {

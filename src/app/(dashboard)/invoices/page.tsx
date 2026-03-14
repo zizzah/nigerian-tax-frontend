@@ -77,7 +77,7 @@ export default function InvoicesPage() {
     status:    filter,
   })
   const { data: statsData }               = useInvoiceStats()
-  const { data: customersData }           = useCustomers({ limit: 200 })
+  const { data: customersData }           = useCustomers({ limit: 100 })
 
   const customerMap = Object.fromEntries(
     (customersData?.customers ?? []).map(c => [c.id, c.name])
