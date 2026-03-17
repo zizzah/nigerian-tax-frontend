@@ -9,13 +9,18 @@ const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
 // Paystack inline JS types
 interface PaystackResponse { status: string; reference: string; message: string }
 interface PaystackHandler  { openIframe: () => void }
-interface PaystackPopType  {
-  setup: (opts: {
-    key: string; email: string; amount: number; ref: string; currency: string
-    metadata: Record<string, string>
-    onClose: () => void
-    callback: (r: PaystackResponse) => void
-  }) => PaystackHandler
+interface PaystackSetupOpts {
+  key:      string
+  email:    string
+  amount:   number
+  ref:      string
+  currency: string
+  metadata: Record<string, string>
+  onClose:  () => void
+  callback: (r: PaystackResponse) => void
+}
+interface PaystackPopType {
+  setup: (opts: PaystackSetupOpts) => PaystackHandler
 }
 declare global { interface Window { PaystackPop?: PaystackPopType } }
 
@@ -109,9 +114,14 @@ export default function PayPage() {
 
   // Check if redirected back from Paystack with a reference
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const ref = params.get('reference') || params.get('trxref')
-    if (ref) setPaid(true)
+    const urlParams = new URLSearchParams(window.location.search)
+    const ref = urlParams.get('reference') || urlParams.get('trxref')
+    if (ref) {
+      // Verify and record the payment in the background
+      fetch(`${API}/api/v1/paystack/verify/${ref}`)
+        .catch(() => {/* webhook fallback */})
+      setPaid(true)
+    }
   }, [])
 
   const handlePay = useCallback(async () => {
@@ -127,19 +137,26 @@ export default function PayPage() {
       // Use Paystack popup if key available, otherwise redirect
       if (data.paystack_key && window.PaystackPop) {
         const handler = window.PaystackPop.setup({
-          key:       data.paystack_key,
-          email:     data.customer.email,
-          amount:    Math.round(Number(data.invoice.outstanding) * 100),
-          ref:       json.reference,
-          currency:  'NGN',
+          key:      data.paystack_key,
+          email:    data.customer.email,
+          amount:   Math.round(Number(data.invoice.outstanding) * 100),
+          ref:      json.reference,
+          currency: 'NGN',
           metadata: {
-            invoice_number: data.invoice.number,
-            customer_name:  data.customer.name,
+            invoice_number: String(data.invoice.number ?? ''),
+            customer_name:  String(data.customer.name ?? ''),
           },
-          onClose: () => setPaying(false),
+          onClose:  () => setPaying(false),
           callback: (response: PaystackResponse) => {
-            setPaying(false)
-            if (response.status === 'success') setPaid(true)
+            if (response.status === 'success') {
+              // Verify with backend synchronously — records payment + marks invoice PAID
+              // fetch returns a Promise; we don't await so the callback stays synchronous
+              fetch(`${API}/api/v1/paystack/verify/${response.reference}`)
+                .catch(() => { /* webhook will handle it if verify fails */ })
+              setPaid(true)
+            } else {
+              setPaying(false)
+            }
           },
         })
         handler.openIframe()
@@ -339,7 +356,7 @@ export default function PayPage() {
         {/* Pay button */}
         <button onClick={handlePay} disabled={paying || !paystackReady}
           style={{ width:'100%', padding:'16px', borderRadius:10, border:'none',
-            background: paying ? '#ccc' : gold, color:'#fff', fontSize:16,
+            background: paying ? '#ccc' : '#16a34a', color:'#fff', fontSize:16,
             fontWeight:700, cursor: paying ? 'not-allowed' : 'pointer',
             display:'flex', alignItems:'center', justifyContent:'center', gap:10,
             transition:'all 0.2s', boxShadow: paying ? 'none' : `0 4px 16px ${gold}55` }}>
@@ -363,6 +380,10 @@ export default function PayPage() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
+        @media(max-width:480px){
+          .pay-header { padding: 10px 14px !important }
+          .pay-card { padding: 16px 14px 24px !important }
+        }
         * { box-sizing: border-box; margin: 0; padding: 0 }
         body { background: #f5f3ef; font-family: 'DM Sans', -apple-system, sans-serif }
       `}</style>
@@ -377,13 +398,13 @@ const S = {
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px 16px',
+    justifyContent: 'flex-start',
+    padding: '16px 12px 32px',
   },
   card: {
     background: '#fff',
     borderRadius: '0 0 12px 12px',
-    padding: '28px 32px',
+    padding: '20px 20px 28px',
     width: '100%',
     maxWidth: 540,
     boxShadow: '0 8px 40px rgba(0,0,0,0.08)',

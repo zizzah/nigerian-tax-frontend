@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Loader2, Upload, Building2, User, FileText, Camera, Check, AlertCircle, Eye, EyeOff, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBusiness, useCreateBusiness, useUpdateBusiness, useUploadLogo } from '@/lib/hooks/useBusiness'
+import apiClient from '@/lib/api/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import type { BusinessCreate, BusinessUpdate } from '@/lib/types'
 
@@ -58,6 +59,25 @@ function Field({ label, children, hint }: {
       {hint && <span style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>{hint}</span>}
     </div>
   )
+}
+
+// Expand shorthand hex (#fff → #ffffff, #abc → #aabbcc)
+// and validate — returns undefined if invalid so backend ignores it
+function normalizeColor(color: string | undefined | null): string | undefined {
+  if (!color) return undefined
+  const c = color.trim()
+  // Already valid 6-char hex
+  if (/^#[0-9A-Fa-f]{6}$/.test(c)) return c
+  // Expand 3-char shorthand: #rgb → #rrggbb
+  if (/^#[0-9A-Fa-f]{3}$/.test(c)) {
+    return '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3]
+  }
+  // Try adding # prefix if missing
+  if (/^[0-9A-Fa-f]{6}$/.test(c)) return '#' + c
+  if (/^[0-9A-Fa-f]{3}$/.test(c)) {
+    return '#' + c[0] + c[0] + c[1] + c[1] + c[2] + c[2]
+  }
+  return undefined  // invalid — don't send
 }
 
 function buildFormDefaults(business?: import('@/lib/types').Business | null) {
@@ -135,8 +155,16 @@ function SettingsInner({
   const [pwdSaving, setPwdSaving]   = useState(false)
 
   // Paystack keys state
-  const [paystackForm, setPaystackForm] = useState({ public_key: '', secret_key: '' })
+  const [paystackForm, setPaystackForm]   = useState({ public_key: '', secret_key: '' })
   const [paystackSaving, setPaystackSaving] = useState(false)
+  const [paystackStatus, setPaystackStatus] = useState<{ has_public_key: boolean; has_secret_key: boolean } | null>(null)
+
+  // Load existing paystack key status on mount
+  useEffect(() => {
+    apiClient.get('/businesses/me/paystack/status')
+      .then(r => setPaystackStatus(r.data as { has_public_key: boolean; has_secret_key: boolean }))
+      .catch(() => {/* not configured yet */})
+  }, [])
 
   const hasExisting = !!business
   const isSaving    = createBiz.isPending || updateBiz.isPending
@@ -160,6 +188,17 @@ function SettingsInner({
 
   // ── Business save ───────────────────────────────────────────────────────────
   const handleSaveBusiness = async () => {
+    // Warn about invalid colors before saving
+    const pc = bizForm.primary_color?.trim()
+    const sc = bizForm.secondary_color?.trim()
+    if (pc && !normalizeColor(pc)) {
+      toast.error(`Invalid primary color "${pc}" — use hex format like #c8952a or #fff`)
+      return
+    }
+    if (sc && !normalizeColor(sc)) {
+      toast.error(`Invalid secondary color "${sc}" — use hex format like #1a6b4a or #fff`)
+      return
+    }
     try {
       if (hasExisting) {
         const payload: BusinessUpdate = {
@@ -177,8 +216,8 @@ function SettingsInner({
           city:          bizForm.city          || undefined,
           state:         bizForm.state         || undefined,
           invoice_prefix: bizForm.invoice_prefix || undefined,
-          primary_color:  bizForm.primary_color,
-          secondary_color: bizForm.secondary_color,
+          primary_color:  normalizeColor(bizForm.primary_color),
+          secondary_color: normalizeColor(bizForm.secondary_color),
         }
         await updateBiz.mutateAsync(payload)
         toast.success('Business profile updated!')
@@ -581,8 +620,26 @@ function SettingsInner({
           <div className="single-col">
             <div className="card">
               <SectionHeader icon={CreditCard} title="Paystack Integration"
-                subtitle="Accept online payments from customers via invoice payment links" />
+                subtitle="Accept online payments directly into your Paystack account" />
               <div style={{ padding:20 }}>
+
+                {/* Current status */}
+                {paystackStatus && (
+                  <div style={{ display:'flex', gap:12, marginBottom:24, flexWrap:'wrap' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13,
+                      color: paystackStatus.has_public_key ? '#1a6b4a' : '#9e9990' }}>
+                      <div style={{ width:8, height:8, borderRadius:'50%',
+                        background: paystackStatus.has_public_key ? '#1a6b4a' : '#ddd' }} />
+                      Public key {paystackStatus.has_public_key ? 'saved' : 'not set'}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13,
+                      color: paystackStatus.has_secret_key ? '#1a6b4a' : '#9e9990' }}>
+                      <div style={{ width:8, height:8, borderRadius:'50%',
+                        background: paystackStatus.has_secret_key ? '#1a6b4a' : '#ddd' }} />
+                      Secret key {paystackStatus.has_secret_key ? 'saved' : 'not set'}
+                    </div>
+                  </div>
+                )}
 
                 {/* How it works */}
                 <div style={{ background:'#faf9f6', borderRadius:8, padding:'14px 16px',
@@ -594,30 +651,31 @@ function SettingsInner({
                   <ol style={{ fontSize:13, color:'#6b6560', paddingLeft:16, lineHeight:'1.8' }}>
                     <li>Add your Paystack API keys below and click Save</li>
                     <li>Open any sent invoice and click <strong>Payment Link</strong></li>
-                    <li>Share the link — it&apos;s included automatically in reminder emails</li>
+                    <li>Share the link with your customer — also included in reminder emails</li>
                     <li>Customer pays online — invoice is automatically marked <strong>PAID</strong></li>
                   </ol>
                 </div>
 
                 <div className="form-grid">
                   <Field label="Paystack Public Key"
-                    hint="Starts with pk_test_ or pk_live_ — safe to use in frontend">
+                    hint="Starts with pk_test_ or pk_live_ — safe to use in the browser">
                     <input className="field-input" type="text"
-                      placeholder="sk_test_..."
+                      placeholder="pk_..."
                       value={paystackForm.public_key}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         setPaystackForm(f => ({ ...f, public_key: e.target.value }))} />
                   </Field>
                   <Field label="Paystack Secret Key"
-                    hint="Starts with sk_test_ or sk_live_ — keep this private">
+                    hint="Starts with sk_test_ or sk_live_ — never share this">
                     <input className="field-input" type="password"
-                      placeholder="sk_test_..."
+                      placeholder="sk_..."
                       value={paystackForm.secret_key}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         setPaystackForm(f => ({ ...f, secret_key: e.target.value }))} />
                   </Field>
                 </div>
 
+                {/* Where to find keys */}
                 <div style={{ background:'#fff8e8', border:'1px solid #f5d87a', borderRadius:8,
                   padding:'12px 16px', fontSize:13, color:'#7a5c00', marginTop:8, marginBottom:20 }}>
                   <strong>Where to find your keys:</strong> Log in to{' '}
@@ -627,18 +685,34 @@ function SettingsInner({
                     dashboard.paystack.com
                   </a>
                   {' '}→ Settings → API Keys &amp; Webhooks.
-                  Use <strong>Test keys</strong> during development, switch to <strong>Live keys</strong> when ready.
+                  Use <strong>Test keys</strong> while testing, switch to <strong>Live keys</strong> before going live.
                 </div>
 
+                {/* Webhook URL - dynamic, no hardcoded domains */}
                 <div style={{ background:'#faf9f6', borderRadius:8, padding:'12px 16px',
                   fontSize:13, color:'#6b6560', marginBottom:20 }}>
                   <strong style={{ color:'#0f0e0b' }}>Webhook URL</strong> — paste this into your Paystack
-                  dashboard under Settings → Webhooks so payments auto-record:<br/>
-                  <code style={{ fontFamily:'monospace', fontSize:12, background:'#fff',
-                    padding:'3px 8px', borderRadius:4, marginTop:6, display:'inline-block',
-                    color:'#2c2a24', border:'1px solid #e8e4da' }}>
-                    {`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://your-api.com'}/api/v1/paystack/webhook`}
-                  </code>
+                  dashboard under Settings → Webhooks so payments are recorded automatically:
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8, flexWrap:'wrap' }}>
+                    <code style={{ fontFamily:'monospace', fontSize:12, background:'#fff',
+                      padding:'4px 10px', borderRadius:4, color:'#2c2a24',
+                      border:'1px solid #e8e4da', wordBreak:'break-all' as const }}>
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin.replace(':3000', ':8000')}/api/v1/paystack/webhook`
+                        : '/api/v1/paystack/webhook'}
+                    </code>
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin.replace(':3000', ':8000')}/api/v1/paystack/webhook`
+                        navigator.clipboard.writeText(url)
+                        toast.success('Webhook URL copied!')
+                      }}
+                      style={{ padding:'4px 10px', fontSize:12, background:'#0f0e0b',
+                        color:'#fff', border:'none', borderRadius:6, cursor:'pointer',
+                        whiteSpace:'nowrap' as const }}>
+                      Copy
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -650,21 +724,12 @@ function SettingsInner({
                     }
                     setPaystackSaving(true)
                     try {
-                      const stored = localStorage.getItem('access_token')
-                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
-                      const res = await fetch(`${apiBase}/api/v1/businesses/me/paystack`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${stored ?? ''}`,
-                        },
-                        body: JSON.stringify(paystackForm),
-                      })
-                      if (res.ok) toast.success('Paystack keys saved')
-                      else {
-                        const err = await res.json() as { detail?: string }
-                        toast.error(err.detail ?? 'Failed to save keys')
-                      }
+                      await apiClient.post('/businesses/me/paystack', paystackForm)
+                      toast.success('Paystack keys saved')
+                      // Refresh status indicators
+                      const res = await apiClient.get('/businesses/me/paystack/status')
+                      setPaystackStatus(res.data as { has_public_key: boolean; has_secret_key: boolean })
+                      setPaystackForm({ public_key: '', secret_key: '' })
                     } catch {
                       toast.error('Failed to save keys — check your connection')
                     } finally {
@@ -683,7 +748,6 @@ function SettingsInner({
           </div>
         )}
 
-        {/* ══ ACCOUNT / PROFILE ══ */}
         {activeTab === 'profile' && (
           <div className="single-col">
             <div className="card">
@@ -795,8 +859,22 @@ function SettingsInner({
         .btn-gold:hover:not(:disabled){background:#d4a030}
         .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
         .btn-outline:hover:not(:disabled){background:var(--cream)}
-        @media(max-width:900px){.settings-grid{grid-template-columns:1fr}.logo-card{order:-1}}
-        @media(max-width:600px){.content{padding:16px}.form-grid{grid-template-columns:1fr}.tab-btn{padding:8px 10px;font-size:12px}.topbar{flex-wrap:wrap;height:auto;padding:12px 16px}}
+        @media(max-width:900px){
+          .settings-grid{grid-template-columns:1fr}
+          .logo-card{order:-1}
+        }
+        @media(max-width:600px){
+          .content{padding:12px}
+          .form-grid{grid-template-columns:1fr}
+          .tab-btn{padding:8px 8px;font-size:11px}
+          .topbar{flex-wrap:wrap;height:auto;min-height:52px;padding:10px 14px}
+          .single-col{max-width:100%}
+          .card{border-radius:10px}
+        }
+        @media(max-width:400px){
+          .tab-btn{padding:6px 6px;font-size:10px}
+          .content{padding:8px}
+        }
       `}</style>
     </>
   )

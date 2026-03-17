@@ -338,11 +338,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const handleGeneratePayLink = async () => {
     setPayLinkLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
+      // Token is stored in cookie — read the same way the axios client does
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('access_token='))
+        ?.split('=')[1] ?? ''
       const API   = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
       const res   = await fetch(`${API}/api/v1/paystack/links/${id}`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token ?? ''}` },
+        headers: { 'Authorization': `Bearer ${token}` },
       })
       const data = await res.json() as { detail?: string; payment_url?: string }
       if (!res.ok) throw new Error(data.detail ?? 'Failed to generate link')
@@ -731,13 +735,19 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         .spin{animation:spin 1s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
         @media(max-width:768px){
-          .content{padding:16px}
-          .invoice-container{padding:20px}
-          .invoice-header{flex-direction:column;gap:20px}
+          .content{padding:12px}
+          .invoice-container{padding:16px}
+          .invoice-header{flex-direction:column;gap:16px}
           .invoice-info{text-align:left}
-          .meta-row{justify-content:flex-start}
-          .items-table{display:block;overflow-x:auto}
-          .topbar{height:auto;padding:10px 16px}
+          .meta-row{justify-content:flex-start;flex-wrap:wrap}
+          .items-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+          .topbar{height:auto;min-height:52px;padding:10px 14px;flex-wrap:wrap}
+          .topbar-actions{flex-wrap:wrap;gap:6px;width:100%}
+          .btn{font-size:11px;padding:6px 10px}
+        }
+        @media(max-width:480px){
+          .topbar-title{font-size:14px}
+          .invoice-container{padding:12px}
         }
       `}</style>
     </>

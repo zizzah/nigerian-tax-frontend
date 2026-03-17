@@ -121,7 +121,7 @@ function RuleForm({
 
   return (
     <div style={{ background:'#faf9f6', border:'1px solid #ddd9cf', borderRadius:12, padding:20 }}>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 160px', gap:12, marginBottom:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:12 }}>
         <div>
           <label style={S.label}>Rule Name</label>
           <input style={S.input} value={form.name} placeholder="e.g. 7-day chase"
@@ -314,7 +314,7 @@ export default function RemindersPage() {
         )}
 
         {/* Stats strip */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:12, marginBottom:24 }}>
           {[
             { label:'Total Rules',    val: rules.length,   icon: Bell },
             { label:'Active',         val: activeRules,    icon: CheckCircle, green: true },
@@ -689,7 +689,11 @@ export default function RemindersPage() {
         .topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .content{flex:1;overflow-y:auto;padding:28px;background:#f5f5f0}
         @keyframes spin{to{transform:rotate(360deg)}}
-        @media(max-width:768px){.content{padding:16px}}
+        @media(max-width:768px){
+          .content{padding:12px}
+          .topbar{padding:10px 14px;height:auto;min-height:52px;flex-wrap:wrap}
+          .topbar-actions{flex-wrap:wrap;gap:6px}
+        }
       `}</style>
     </>
   )

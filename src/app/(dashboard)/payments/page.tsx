@@ -8,10 +8,12 @@ import type { Payment } from '@/lib/types'
 
 const formatCurrency = (amount: string | number) => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency', currency: 'NGN',
+  const n = isNaN(num) ? 0 : Math.abs(num)
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000)     return `₦${(n / 1_000_000).toFixed(1)}M`
+  return '₦' + new Intl.NumberFormat('en-NG', {
     minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(isNaN(num) ? 0 : num)
+  }).format(n)
 }
 
 const formatDate = (dateStr: string | null) => {
@@ -197,7 +199,7 @@ export default function PaymentsPage() {
         .stat-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow)}
         .stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
         .stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
-        .stat-value{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:4px}
+        .stat-value{font-family:'Fraunces',serif,system-ui,sans-serif;font-size:24px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:4px}
         .stat-label{font-size:12px;color:var(--text-dim)}
         .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
         .card-header{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -222,8 +224,16 @@ export default function PaymentsPage() {
         .empty-state{padding:48px 20px;text-align:center;color:var(--text-dim)}
         @media(max-width:768px){
           .stats-grid{grid-template-columns:repeat(2,1fr)}
-          .content{padding:16px}
-          .table{display:block;overflow-x:auto}
+          .content{padding:12px}
+          .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+          .topbar{height:auto;min-height:52px;padding:10px 14px;flex-wrap:wrap}
+          .topbar-actions{flex-wrap:wrap;gap:6px}
+          .table th,.table td{padding:8px 10px;font-size:12px}
+        }
+        @media(max-width:480px){
+          .stats-grid{grid-template-columns:1fr}
+          .content{padding:8px}
+          .topbar-title{font-size:15px}
         }
       `}</style>
     </>

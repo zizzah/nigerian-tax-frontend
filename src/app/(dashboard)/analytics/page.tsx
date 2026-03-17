@@ -4,11 +4,15 @@ import { Loader2 } from 'lucide-react'
 import { useDashboard } from '@/lib/hooks/useDashboard'
 import { useCustomers } from '@/lib/hooks/useCustomers'
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-NG', {
-    style: 'currency', currency: 'NGN',
+const formatCurrency = (amount: number) => {
+  // Use explicit ₦ prefix to avoid font glyph fallback issues
+  const n = Math.abs(amount || 0)
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000)     return `₦${(n / 1_000_000).toFixed(1)}M`
+  return '₦' + new Intl.NumberFormat('en-NG', {
     minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(amount || 0)
+  }).format(n)
+}
 
 export default function AnalyticsPage() {
   const { data: stats, isLoading } = useDashboard()
@@ -37,6 +41,12 @@ export default function AnalyticsPage() {
 
   // Derive pending amount (sent invoices outstanding)
   const pendingAmount = totalOutstanding - overdueAmount
+
+  // Expense & profit — backend now returns these in /analytics/dashboard
+  const statsExt      = stats as (typeof stats & { total_expenses?: number; net_profit?: number }) | undefined
+  const totalExpenses = statsExt?.total_expenses ?? 0
+  const netProfit     = statsExt?.net_profit     ?? 0
+  const profitMargin  = totalCollected > 0 ? Math.round(netProfit / totalCollected * 100) : 0
 
   // Tax estimates derived from collected revenue
   const vatCollected = totalCollected * 0.075
@@ -113,6 +123,35 @@ export default function AnalyticsPage() {
             </div>
             <div className="stat-value">{paidCount}/{nonCancelled}</div>
             <div className="stat-label">Collection Rate</div>
+          </div>
+
+          <div className="stat-card" style={{ background: totalExpenses > 0 ? '#fff5f5' : '#fff' }}>
+            <div className="stat-top">
+              <div className="stat-icon" style={{ background: '#fee2e2' }}>💸</div>
+            </div>
+            <div className="stat-value" style={{ color: '#dc2626' }}>
+              {totalExpenses > 0 ? formatCurrency(totalExpenses) : '—'}
+            </div>
+            <div className="stat-label">Total Expenses (YTD)</div>
+          </div>
+
+          <div className="stat-card" style={{
+            background: netProfit > 0 ? '#f0fdf4' : netProfit < 0 ? '#fff5f5' : '#fff'
+          }}>
+            <div className="stat-top">
+              <div className="stat-icon" style={{ background: netProfit >= 0 ? '#d1fae5' : '#fee2e2' }}>
+                {netProfit >= 0 ? '📈' : '📉'}
+              </div>
+              {totalExpenses > 0 && (
+                <span className="stat-change" style={{ color: netProfit >= 0 ? '#059669' : '#dc2626' }}>
+                  {Math.abs(profitMargin)}% {netProfit >= 0 ? 'margin' : 'loss'}
+                </span>
+              )}
+            </div>
+            <div className="stat-value" style={{ color: netProfit >= 0 ? '#059669' : '#dc2626' }}>
+              {totalExpenses > 0 ? formatCurrency(Math.abs(netProfit)) : '—'}
+            </div>
+            <div className="stat-label">Net {netProfit >= 0 ? 'Profit' : 'Loss'} (YTD)</div>
           </div>
         </div>
 
@@ -267,12 +306,12 @@ export default function AnalyticsPage() {
         .page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--ink)}
         .page-sub{font-size:13px;color:var(--text-dim);margin-top:4px}
 
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
         .stat-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow)}
         .stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
         .stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
         .stat-change.up{color:var(--green);background:var(--green-light);font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
-        .stat-value{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:4px}
+        .stat-value{font-family:'Fraunces',serif,system-ui,sans-serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:4px}
         .stat-label{font-size:12px;color:var(--text-dim)}
 
         .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -307,12 +346,20 @@ export default function AnalyticsPage() {
         .empty-state{padding:40px 20px;text-align:center;color:var(--text-dim)}
 
         @media(max-width:1024px){
-          .stats-grid{grid-template-columns:repeat(2,1fr)}
+          .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
           .analytics-grid{grid-template-columns:1fr}
         }
         @media(max-width:768px){
-          .content{padding:16px}
+          .content{padding:12px}
           .stats-grid{grid-template-columns:1fr}
+          .topbar{height:auto;min-height:52px;padding:10px 14px;flex-wrap:wrap}
+          table{font-size:12px}
+          th,td{padding:8px 8px!important}
+        }
+        @media(max-width:480px){
+          .content{padding:8px}
+          .topbar-title{font-size:15px}
+          .stats-grid{gap:10px}
         }
       `}</style>
     </>

@@ -13,6 +13,8 @@ import {
   BarChart3,
   PieChart,
   Bell,
+  Target,
+  Receipt,
   Settings,
   Menu,
   X,
@@ -38,6 +40,8 @@ const navSections = [
       { label: 'Analytics', href: '/analytics', icon: BarChart3, badge: null },
       { label: 'Reports',  href: '/reports',  icon: PieChart,  badge: null },
       { label: 'Reminders', href: '/reminders', icon: Bell,     badge: null },
+      { label: 'Targets',   href: '/targets',   icon: Target,   badge: null },
+      { label: 'Expenses',  href: '/expenses',  icon: Receipt,  badge: null },
     ],
   },
   {

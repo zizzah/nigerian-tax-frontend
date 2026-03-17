@@ -51,7 +51,7 @@ function ProductModal({
     closeBtn:   { background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9e9990', padding:'2px 8px' },
     body:       { padding:24, overflowY:'auto' as const, display:'flex', flexDirection:'column' as const, gap:14 },
     footer:     { padding:'14px 24px', borderTop:'1px solid #ddd9cf', display:'flex', justifyContent:'flex-end', gap:10 },
-    grid2:      { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 },
+    grid2:      { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 },
     field:      { display:'flex', flexDirection:'column' as const, gap:5 },
     label:      { fontSize:11, fontWeight:500, color:'#9e9990', textTransform:'uppercase' as const, letterSpacing:'0.5px' },
     input:      { width:'100%', padding:'9px 12px', border:'1px solid #ddd9cf', borderRadius:8, fontSize:13.5, color:'#0f0e0b', background:'#fff', outline:'none', boxSizing:'border-box' as const, fontFamily:"'DM Sans',sans-serif" },
@@ -379,9 +379,16 @@ export default function ProductsPage() {
           .topbar-actions{width:100%;justify-content:space-between}
         }
         @media(max-width:768px){
-          .content{padding:16px}
-          .table{display:block;overflow-x:auto}
-          .table th,.table td{padding:10px 12px;font-size:12px;white-space:nowrap}
+          .content{padding:12px}
+          .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+          .table th,.table td{padding:8px 10px;font-size:12px;white-space:nowrap}
+          .topbar{flex-wrap:wrap;height:auto;min-height:52px;padding:10px 14px}
+          .topbar-actions{flex-wrap:wrap;gap:6px}
+        }
+        @media(max-width:480px){
+          .content{padding:8px}
+          .topbar-title{font-size:15px}
+          .table th,.table td{padding:6px 8px;font-size:11px}
         }
       `}</style>
     </>

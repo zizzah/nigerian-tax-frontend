@@ -386,9 +386,14 @@ export default function InvoicesPage() {
           .search-input{width:100%}
         }
         @media(max-width:768px){
-          .content{padding:16px}
-          .table{display:block;overflow-x:auto}
-          .table th,.table td{padding:10px 12px;font-size:12px;white-space:nowrap}
+          .content{padding:12px}
+          .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+          .table th,.table td{padding:8px 10px;font-size:11px;white-space:nowrap}
+        }
+        @media(max-width:480px){
+          .topbar-title{font-size:15px}
+          .content{padding:8px}
+          .filter-bar{flex-wrap:wrap;gap:6px}
         }
       `}</style>
     </>

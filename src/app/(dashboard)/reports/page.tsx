@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Loader2, Download, FileText, TrendingUp, AlertCircle, Package, ChevronDown } from 'lucide-react'
 import { useInvoices } from '@/lib/hooks/useInvoices'
 import { useCustomers } from '@/lib/hooks/useCustomers'
@@ -9,9 +9,14 @@ import { usePayments } from '@/lib/hooks/usePayments'
 import type { Invoice, Customer } from '@/lib/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN',
-    minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0)
+const fmt = (n: number) => {
+  const abs = Math.abs(n || 0)
+  if (abs >= 1_000_000_000) return `₦${(abs / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000)     return `₦${(abs / 1_000_000).toFixed(1)}M`
+  return '₦' + new Intl.NumberFormat('en-NG', {
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(abs)
+}
 
 const fmtDate = (d: string | null) => d
   ? new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -94,6 +99,25 @@ export default function ReportsPage() {
   const { data: productsData, isLoading: prodLoading } = useProducts({ limit: 100 })
   // Customers: backend uses skip/limit (not page_size)
   const { data: customersData } = useCustomers({ skip: 0, limit: 100 })
+
+  // ─── Expense data from /expenses/summary ─────────────────────────────────
+  const [expenseSummary, setExpenseSummary] = useState<{
+    total_expenses: number; total_deductible: number
+    ytd_revenue: number; net_profit: number; profit_margin: number
+    health: string; monthly: { month: number; label: string; revenue: number; expenses: number; profit: number }[]
+    groups: { group: string; total: number; categories: { category: string; label: string; amount: number }[] }[]
+  } | null>(null)
+
+  useEffect(() => {
+    const year = new Date(from).getFullYear()
+    fetch(`/api/v1/expenses/summary?year=${year}`, {
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setExpenseSummary(d))
+      .catch(() => {})
+  }, [from])
 
   const allInvoices: Invoice[] = [
     ...(invPage1?.invoices ?? []),
@@ -342,16 +366,20 @@ export default function ReportsPage() {
             {/* KPIs */}
             <div style={S.kpiWrap}>
               {[
-                { label:'Total Invoiced',    val: fmt(plData.totalInvoiced),    sub:`${plData.count} invoices` },
-                { label:'Revenue Collected', val: fmt(plData.totalCollected),   sub:`${Math.round(plData.totalCollected / (plData.totalInvoiced || 1) * 100)}% collection rate`, gold: true },
-                { label:'Outstanding',       val: fmt(plData.totalOutstanding), sub:'Unpaid balance' },
-                { label:'Overdue',           val: fmt(plData.overdueAmount),    sub:'Past due date', red: plData.overdueAmount > 0 },
-                { label:'Total VAT',         val: fmt(plData.totalTax),         sub:'7.5% standard rate' },
-                { label:'Total Discounts',   val: fmt(plData.totalDiscount),    sub:'Given to customers' },
+                { label:'Revenue Collected', val: fmt(plData.totalCollected),   sub:`${Math.round(plData.totalCollected / (plData.totalInvoiced || 1) * 100)}% collection rate`, color:'#c8952a' },
+                { label:'Total Expenses',    val: expenseSummary ? fmt(expenseSummary.total_expenses) : '—', sub:'All categories YTD', color:'#b83232' },
+                { label:'Net Profit / Loss', val: expenseSummary ? fmt(Math.abs(expenseSummary.net_profit)) : '—',
+                  sub: expenseSummary ? (expenseSummary.net_profit >= 0 ? `${expenseSummary.profit_margin}% margin` : 'Net loss') : '—',
+                  color: expenseSummary ? (expenseSummary.net_profit >= 0 ? '#059669' : '#b83232') : '#9e9990' },
+                { label:'Total Invoiced',    val: fmt(plData.totalInvoiced),    sub:`${plData.count} invoices`, color:'#0f0e0b' },
+                { label:'Outstanding',       val: fmt(plData.totalOutstanding), sub:'Unpaid balance', color:'#0f0e0b' },
+                { label:'Overdue',           val: fmt(plData.overdueAmount),    sub:'Past due date', color: plData.overdueAmount > 0 ? '#b83232' : '#9e9990' },
+                { label:'Total VAT',         val: fmt(plData.totalTax),         sub:'7.5% standard rate', color:'#0f0e0b' },
+                { label:'Tax Deductible',    val: expenseSummary ? fmt(expenseSummary.total_deductible) : '—', sub:'Allowable deductions', color:'#2563eb' },
               ].map(k => (
                 <div key={k.label} style={S.kpi}>
                   <div style={S.kpiLbl}>{k.label}</div>
-                  <div style={{ ...S.kpiVal, color: k.gold ? '#c8952a' : k.red ? '#b83232' : '#0f0e0b' }}>{k.val}</div>
+                  <div style={{ ...S.kpiVal, color: k.color }}>{k.val}</div>
                   <div style={S.kpiSub}>{k.sub}</div>
                 </div>
               ))}
@@ -403,6 +431,68 @@ export default function ReportsPage() {
                 )}
               </table>
             </div>
+
+            {/* ── Expense breakdown in P&L ── */}
+            {expenseSummary && expenseSummary.groups.length > 0 && (
+              <div style={S.card}>
+                <div style={{ fontSize:14, fontWeight:700, color:'#0f0e0b', marginBottom:16,
+                  display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span>Expense Breakdown</span>
+                  <span style={{ fontSize:13, fontWeight:400, color:'#9e9990' }}>
+                    Total: {fmt(expenseSummary.total_expenses)}
+                  </span>
+                </div>
+                <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                  <thead style={S.thead}>
+                    <tr>
+                      {['Category Group','Amount','% of Expenses','Deductible'].map(h => (
+                        <th key={h} style={{ ...S.th,
+                          textAlign: h === 'Category Group' ? 'left' : 'right' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenseSummary.groups.map(g => (
+                      <tr key={g.group}>
+                        <td style={S.td}>{g.group}</td>
+                        <td style={{ ...S.tdR, color:'#b83232', fontWeight:600 }}>{fmt(g.total)}</td>
+                        <td style={S.tdR}>
+                          {expenseSummary.total_expenses > 0
+                            ? Math.round(g.total / expenseSummary.total_expenses * 100) + '%'
+                            : '—'}
+                        </td>
+                        <td style={{ ...S.tdR, color:'#2563eb' }}>
+                          {fmt(g.categories.reduce((s, c) => s + c.amount, 0))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td style={S.sumL}>Total Expenses</td>
+                      <td style={{ ...S.sum, color:'#b83232' }}>{fmt(expenseSummary.total_expenses)}</td>
+                      <td style={S.sum}>100%</td>
+                      <td style={{ ...S.sum, color:'#2563eb' }}>{fmt(expenseSummary.total_deductible)}</td>
+                    </tr>
+                    <tr>
+                      <td style={S.sumL} colSpan={3}>
+                        <strong>Net {expenseSummary.net_profit >= 0 ? 'Profit' : 'Loss'}</strong>
+                        <span style={{ marginLeft:8, fontSize:11, color:'#9e9990' }}>
+                          Revenue Collected − Total Expenses
+                        </span>
+                      </td>
+                      <td style={{ ...S.sum,
+                        color: expenseSummary.net_profit >= 0 ? '#059669' : '#b83232',
+                        fontSize:15, fontWeight:800 }}>
+                        {expenseSummary.net_profit < 0 ? '(' : ''}
+                        {fmt(Math.abs(expenseSummary.net_profit))}
+                        {expenseSummary.net_profit < 0 ? ')' : ''}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </>
         )}
 
@@ -516,7 +606,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Aging buckets */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:20 }}>
               {[
                 { label:'Current',    val: agedData.buckets.current, color:'#1a6b4a', bg:'#d4eddf' },
                 { label:'1–30 days',  val: agedData.buckets.d30,    color:'#856404', bg:'#fff3cd' },
@@ -674,8 +764,15 @@ export default function ReportsPage() {
         .topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .content{flex:1;overflow-y:auto;padding:28px;background:#f5f5f0}
         @media(max-width:768px){
-          .content{padding:16px}
-          .topbar{height:auto;padding:12px 16px;gap:8px}
+          .content{padding:12px}
+          .topbar{height:auto;min-height:52px;padding:10px 14px;gap:8px;flex-wrap:wrap}
+          .topbar-actions{flex-wrap:wrap;gap:6px}
+          table{font-size:11px}
+          th,td{padding:8px 6px!important}
+        }
+        @media(max-width:480px){
+          .content{padding:8px}
+          .topbar-title{font-size:15px}
         }
       `}</style>
     </>

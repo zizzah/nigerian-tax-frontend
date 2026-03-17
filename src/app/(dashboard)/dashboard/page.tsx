@@ -1,14 +1,19 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Plus, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useDashboard } from '@/lib/hooks/useDashboard'
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-NG', {
-    style: 'currency', currency: 'NGN',
+const formatCurrency = (amount: number) => {
+  // Use explicit ₦ prefix to avoid font glyph fallback issues
+  const n = Math.abs(amount || 0)
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000)     return `₦${(n / 1_000_000).toFixed(1)}M`
+  return '₦' + new Intl.NumberFormat('en-NG', {
     minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(amount || 0)
+  }).format(n)
+}
 
 const formatDate = (dateStr: string | null) => {
   if (!dateStr) return '-'
@@ -34,6 +39,18 @@ const methodLabels: Record<string, string> = {
 export default function DashboardPage() {
   const router = useRouter()
   const { data: stats, isLoading, isError } = useDashboard()
+  const [expenseHealth, setExpenseHealth] = useState<{
+    health: string; net_profit: number; profit_margin: number
+    total_expenses: number; ytd_revenue: number
+  } | null>(null)
+
+  useEffect(() => {
+    const year = new Date().getFullYear()
+    fetch(`/api/v1/expenses/summary?year=${year}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setExpenseHealth(d))
+      .catch(() => {})
+  }, [])
 
   const chartData    = stats?.revenue_by_month ?? []
   const maxChartVal  = Math.max(...chartData.map(d => d.revenue), 1)
@@ -109,6 +126,42 @@ export default function DashboardPage() {
             <div className="stat-value">{stats?.active_customers ?? 0}</div>
             <div className="stat-label">Customers</div>
           </div>
+
+          {/* Business Health Card */}
+          {(() => {
+            const h = expenseHealth?.health ?? 'no_data'
+            const profit = expenseHealth?.net_profit ?? 0
+            const margin = expenseHealth?.profit_margin ?? 0
+            const bg = h === 'healthy' ? '#d1fae5'
+              : h === 'stable'        ? '#dbeafe'
+              : h === 'breaking_even' ? '#fef3c7'
+              : h === 'loss'         ? '#fee2e2' : '#f3f4f6'
+            const icon = h === 'healthy' ? '💚'
+              : h === 'stable'        ? '💙'
+              : h === 'breaking_even' ? '🟡'
+              : h === 'loss'         ? '🔴' : '📊'
+            const label = h === 'healthy' ? 'Healthy'
+              : h === 'stable'        ? 'Stable'
+              : h === 'breaking_even' ? 'Breaking Even'
+              : h === 'loss'         ? 'Loss' : 'No Data'
+            const profitColor = profit >= 0 ? '#059669' : '#dc2626'
+            const changeText = expenseHealth
+              ? `${Math.abs(margin)}% ${profit >= 0 ? 'margin' : 'loss'}` : 'No data'
+            return (
+              <div className="stat-card" style={{ background: bg, border: '1px solid transparent' }}>
+                <div className="stat-top">
+                  <div className="stat-icon" style={{ background: 'rgba(255,255,255,0.7)' }}>
+                    {icon}
+                  </div>
+                  <span className="stat-change" style={{ color: profitColor }}>
+                    {changeText}
+                  </span>
+                </div>
+                <div className="stat-value" style={{ fontSize: 20 }}>{label}</div>
+                <div className="stat-label">Business Health</div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* ── Revenue Chart + Quick Actions ── */}
@@ -316,7 +369,7 @@ export default function DashboardPage() {
         .content{flex:1;overflow-y:auto;padding:28px}
 
         /* Stats */
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
         .stat-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);transition:transform 0.15s,box-shadow 0.15s}
         .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
         .stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -324,7 +377,7 @@ export default function DashboardPage() {
         .stat-change{font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
         .stat-change.up{color:var(--green);background:var(--green-light)}
         .stat-change.down{color:var(--red);background:var(--red-light)}
-        .stat-value{font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:4px}
+        .stat-value{font-family:'Fraunces',serif,system-ui,sans-serif;font-size:28px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:4px}
         .stat-label{font-size:12px;color:var(--text-dim)}
 
         /* Status summary bar */
@@ -387,14 +440,21 @@ export default function DashboardPage() {
           .grid-2{grid-template-columns:1fr}
         }
         @media(max-width:768px){
-          .content{padding:16px}
-          .stats-grid{grid-template-columns:1fr;gap:12px}
-          .stat-value{font-size:24px}
-          .status-bar-card{gap:14px}
+          .content{padding:12px}
+          .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+          .stat-value{font-size:22px}
+          .status-bar-card{gap:12px}
           .status-total{margin-left:0;width:100%}
-          .chart-area{height:150px;padding:12px}
-          .table{display:block;overflow-x:auto}
+          .chart-area{height:140px;padding:10px}
+          .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
           .quick-actions{grid-template-columns:1fr}
+          .topbar{height:auto;min-height:52px;padding:10px 14px;flex-wrap:wrap}
+        }
+        @media(max-width:480px){
+          .content{padding:8px}
+          .stats-grid{grid-template-columns:1fr;gap:8px}
+          .stat-value{font-size:20px}
+          .topbar-title{font-size:15px}
         }
       `}</style>
     </>
