@@ -101,6 +101,11 @@ export default function ReportsPage() {
   const { data: customersData } = useCustomers({ skip: 0, limit: 100 })
 
   // ─── Expense data from /expenses/summary ─────────────────────────────────
+  const [expensesByPeriod, setExpensesByPeriod] = useState<{
+    total: number; cogs: number; opex: number; finance: number; tax_expense: number
+    groups: { group: string; total: number; categories: { category: string; label: string; amount: number }[] }[]
+  } | null>(null)
+
   const [expenseSummary, setExpenseSummary] = useState<{
     total_expenses: number; total_deductible: number
     ytd_revenue: number; net_profit: number; profit_margin: number
@@ -110,14 +115,37 @@ export default function ReportsPage() {
 
   useEffect(() => {
     const year = new Date(from).getFullYear()
-    fetch(`/api/v1/expenses/summary?year=${year}`, {
-      headers: { 'Content-Type': 'application/json' },
+    // Full year summary for health/totals
+    fetch('/api/v1/expenses/summary?year=' + year, {
       credentials: 'include',
     })
       .then(r => r.ok ? r.json() : null)
       .then(d => setExpenseSummary(d))
       .catch(() => {})
-  }, [from])
+
+    // Period-specific expenses (filtered by from/to date)
+    fetch('/api/v1/expenses/?page_size=100&from_date=' + from + '&to_date=' + to, {
+      credentials: 'include',
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.expenses) return
+        const expenses = d.expenses as Array<{ category: string; category_label: string; amount: number }>
+        const COGS_CATS = ['COST_OF_SALES']
+        const FINANCE_CATS = ['BANK_CHARGES', 'LOAN_INTEREST', 'LOAN_REPAYMENT']
+        const TAX_CATS = ['COMPANY_TAX', 'VAT_REMITTED', 'WHT_REMITTED', 'PAYE_TAX', 'GOVT_LEVIES']
+        const cogs    = expenses.filter(e => COGS_CATS.includes(e.category)).reduce((s, e) => s + e.amount, 0)
+        const finance = expenses.filter(e => FINANCE_CATS.includes(e.category)).reduce((s, e) => s + e.amount, 0)
+        const taxExp  = expenses.filter(e => TAX_CATS.includes(e.category)).reduce((s, e) => s + e.amount, 0)
+        const opex    = expenses.filter(e => !COGS_CATS.includes(e.category) && !FINANCE_CATS.includes(e.category) && !TAX_CATS.includes(e.category)).reduce((s, e) => s + e.amount, 0)
+        const total   = expenses.reduce((s, e) => s + e.amount, 0)
+        // Group by category_label for display
+        const grouped: Record<string, number> = {}
+        expenses.forEach(e => { grouped[e.category_label] = (grouped[e.category_label] || 0) + e.amount })
+        setExpensesByPeriod({ total, cogs: cogs, opex, finance, tax_expense: taxExp, groups: [] })
+      })
+      .catch(() => {})
+  }, [from, to])
 
   const allInvoices: Invoice[] = [
     ...(invPage1?.invoices ?? []),
@@ -363,19 +391,13 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* KPIs */}
+            {/* ── Summary KPIs ── */}
             <div style={S.kpiWrap}>
               {[
-                { label:'Revenue Collected', val: fmt(plData.totalCollected),   sub:`${Math.round(plData.totalCollected / (plData.totalInvoiced || 1) * 100)}% collection rate`, color:'#c8952a' },
-                { label:'Total Expenses',    val: expenseSummary ? fmt(expenseSummary.total_expenses) : '—', sub:'All categories YTD', color:'#b83232' },
-                { label:'Net Profit / Loss', val: expenseSummary ? fmt(Math.abs(expenseSummary.net_profit)) : '—',
-                  sub: expenseSummary ? (expenseSummary.net_profit >= 0 ? `${expenseSummary.profit_margin}% margin` : 'Net loss') : '—',
-                  color: expenseSummary ? (expenseSummary.net_profit >= 0 ? '#059669' : '#b83232') : '#9e9990' },
-                { label:'Total Invoiced',    val: fmt(plData.totalInvoiced),    sub:`${plData.count} invoices`, color:'#0f0e0b' },
-                { label:'Outstanding',       val: fmt(plData.totalOutstanding), sub:'Unpaid balance', color:'#0f0e0b' },
-                { label:'Overdue',           val: fmt(plData.overdueAmount),    sub:'Past due date', color: plData.overdueAmount > 0 ? '#b83232' : '#9e9990' },
-                { label:'Total VAT',         val: fmt(plData.totalTax),         sub:'7.5% standard rate', color:'#0f0e0b' },
-                { label:'Tax Deductible',    val: expenseSummary ? fmt(expenseSummary.total_deductible) : '—', sub:'Allowable deductions', color:'#2563eb' },
+                { label:'Total Invoiced',  val: fmt(plData.totalInvoiced),    sub: plData.count + ' invoices',                                color:'#0f0e0b' },
+                { label:'Collected',       val: fmt(plData.totalCollected),   sub: Math.round(plData.totalCollected / (plData.totalInvoiced || 1) * 100) + '% collection rate', color:'#c8952a' },
+                { label:'Outstanding',     val: fmt(plData.totalOutstanding), sub:'Unpaid balance',                                            color:'#b83232' },
+                { label:'Total VAT',       val: fmt(plData.totalTax),         sub:'7.5% standard rate',                                        color:'#0f0e0b' },
               ].map(k => (
                 <div key={k.label} style={S.kpi}>
                   <div style={S.kpiLbl}>{k.label}</div>
@@ -384,6 +406,81 @@ export default function ReportsPage() {
                 </div>
               ))}
             </div>
+
+            {/* ── Proper P&L Statement ── */}
+            {expensesByPeriod && (
+              <div style={{ ...S.card, marginBottom:20 }}>
+                <div style={{ fontSize:15, fontWeight:700, color:'#0f0e0b', marginBottom:16,
+                  paddingBottom:12, borderBottom:'2px solid #0f0e0b' }}>
+                  Profit & Loss Statement &mdash; {from} to {to}
+                </div>
+                {(() => {
+                  const revenue   = plData.totalCollected
+                  const cogs      = expensesByPeriod.cogs
+                  const grossProfit = revenue - cogs
+                  const grossMargin = revenue > 0 ? Math.round(grossProfit / revenue * 100) : 0
+                  const opex      = expensesByPeriod.opex
+                  const ebit      = grossProfit - opex
+                  const finance   = expensesByPeriod.finance
+                  const netBeforeTax = ebit - finance
+                  const taxExp    = expensesByPeriod.tax_expense
+                  const netAfterTax  = netBeforeTax - taxExp
+                  const totalExp  = expensesByPeriod.total
+
+                  const row = (label: string, val: number, indent = false, bold = false, positive = true, separator = false) => (
+                    <div key={label} style={{
+                      display:'flex', justifyContent:'space-between', alignItems:'center',
+                      padding: bold ? '12px 0' : '8px 0',
+                      borderTop: separator ? '1px solid #ede9de' : 'none',
+                      borderBottom: bold ? '2px solid #0f0e0b' : 'none',
+                    }}>
+                      <span style={{ fontSize:13, fontWeight: bold ? 700 : 400,
+                        color: bold ? '#0f0e0b' : '#4b4843',
+                        paddingLeft: indent ? 24 : 0 }}>{label}</span>
+                      <span style={{ fontSize:13, fontWeight: bold ? 700 : 500,
+                        color: val === 0 ? '#9e9990' : (val < 0 || !positive) ? '#b83232' : '#0f0e0b',
+                        fontFamily:'DM Sans,system-ui,sans-serif' }}>
+                        {val === 0 ? '—' : ((!positive || val < 0) ? '(' + fmt(Math.abs(val)) + ')' : fmt(val))}
+                      </span>
+                    </div>
+                  )
+
+                  return (
+                    <div>
+                      {row('Revenue (Cash Collected)', revenue, false, false, true)}
+                      {cogs > 0 && row('Less: Cost of Sales', cogs, true, false, false)}
+                      {row('Gross Profit', grossProfit, false, true, true, true)}
+                      {grossProfit !== revenue && (
+                        <div style={{ fontSize:11, color:'#9e9990', paddingBottom:8, borderBottom:'1px solid #f3f4f6' }}>
+                          Gross margin: {grossMargin}%
+                        </div>
+                      )}
+                      {opex > 0 && row('Less: Operating Expenses', opex, true, false, false)}
+                      {row('Net Operating Profit (EBIT)', ebit, false, true, true, true)}
+                      {finance > 0 && row('Less: Finance Costs', finance, true, false, false)}
+                      {row('Net Profit Before Tax', netBeforeTax, false, true, true, true)}
+                      {taxExp > 0 && row('Less: Tax & Levies', taxExp, true, false, false)}
+                      {row('Net Profit After Tax', netAfterTax, false, true, true, true)}
+
+                      {totalExp === 0 && (
+                        <div style={{ fontSize:12, color:'#d97706', background:'#fef3c7',
+                          padding:'8px 12px', borderRadius:6, marginTop:12 }}>
+                          No expenses recorded for this period. Add expenses to see full P&L.
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+            {!expensesByPeriod && (
+              <div style={{ ...S.card, padding:'16px 20px', marginBottom:20,
+                background:'#fef3c7', border:'1px solid #fde68a' }}>
+                <span style={{ fontSize:13, color:'#92400e' }}>
+                  No expense data for this period. Add expenses under the Expenses page to see a complete P&L.
+                </span>
+              </div>
+            )}
 
             {/* Month-by-month table */}
             <div style={S.card}>

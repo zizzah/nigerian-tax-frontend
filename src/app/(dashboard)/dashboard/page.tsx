@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
 import { Plus, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useDashboard } from '@/lib/hooks/useDashboard'
 
@@ -39,19 +38,6 @@ const methodLabels: Record<string, string> = {
 export default function DashboardPage() {
   const router = useRouter()
   const { data: stats, isLoading, isError } = useDashboard()
-  const [expenseHealth, setExpenseHealth] = useState<{
-    health: string; net_profit: number; profit_margin: number
-    total_expenses: number; ytd_revenue: number
-  } | null>(null)
-
-  useEffect(() => {
-    const year = new Date().getFullYear()
-    fetch(`/api/v1/expenses/summary?year=${year}`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => d && setExpenseHealth(d))
-      .catch(() => {})
-  }, [])
-
   const chartData    = stats?.revenue_by_month ?? []
   const maxChartVal  = Math.max(...chartData.map(d => d.revenue), 1)
 
@@ -129,9 +115,10 @@ export default function DashboardPage() {
 
           {/* Business Health Card */}
           {(() => {
-            const h = expenseHealth?.health ?? 'no_data'
-            const profit = expenseHealth?.net_profit ?? 0
-            const margin = expenseHealth?.profit_margin ?? 0
+            const statsAny = stats as (typeof stats & { health?: string; net_profit?: number; profit_margin?: number }) | undefined
+            const h = statsAny?.health ?? 'no_data'
+            const profit = statsAny?.net_profit ?? 0
+            const margin = statsAny?.profit_margin ?? 0
             const bg = h === 'healthy' ? '#d1fae5'
               : h === 'stable'        ? '#dbeafe'
               : h === 'breaking_even' ? '#fef3c7'
@@ -145,8 +132,8 @@ export default function DashboardPage() {
               : h === 'breaking_even' ? 'Breaking Even'
               : h === 'loss'         ? 'Loss' : 'No Data'
             const profitColor = profit >= 0 ? '#059669' : '#dc2626'
-            const changeText = expenseHealth
-              ? `${Math.abs(margin)}% ${profit >= 0 ? 'margin' : 'loss'}` : 'No data'
+            const changeText = statsAny?.health
+              ? Math.abs(margin) + '% ' + (profit >= 0 ? 'margin' : 'loss') : 'No data'
             return (
               <div className="stat-card" style={{ background: bg, border: '1px solid transparent' }}>
                 <div className="stat-top">
