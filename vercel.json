@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/proxy/:path*",
+      "destination": "https://nigerian-tax-compliance-backend.onrender.com/api/v1/:path*"
+    }
+  ]
+}

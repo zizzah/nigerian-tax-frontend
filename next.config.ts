@@ -1,13 +1,29 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next'
+
+const BACKEND = process.env.BACKEND_URL || 'https://nigerian-tax-compliance-backend.onrender.com'
+
+const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        // All /api/proxy/* requests get forwarded to the Render backend
+        source:      '/api/proxy/:path*',
+        destination: `${BACKEND}/api/v1/:path*`,
+      },
+    ]
+  },
+
+  async headers() {
+    return [
+      {
+        // Allow the frontend to talk to the backend (CORS handled here)
         source: '/api/proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/v1/:path*`,
+        headers: [
+          { key: 'X-Forwarded-Host', value: 'nigerian-tax-compliance-backend.onrender.com' },
+        ],
       },
     ]
   },
 }
 
-module.exports = nextConfig
+export default nextConfig
