@@ -3,7 +3,6 @@ import type { NextConfig } from 'next'
 const BACKEND = process.env.BACKEND_URL || 'https://nigerian-tax-compliance-backend.onrender.com'
 
 const nextConfig: NextConfig = {
-  // Proxy all /api/proxy/* requests to Render backend
   async rewrites() {
     return [
       {
@@ -13,13 +12,12 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // Allow Next.js Image component to load from Cloudinary
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-        pathname: '/djtntuswd/**',   // your Cloudinary cloud name
+        pathname: '/djtntuswd/**',
       },
       {
         protocol: 'https',
@@ -28,18 +26,12 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Production optimizations
-  poweredByHeader: false,           // Remove X-Powered-By: Next.js header
-  compress: true,                   // Enable gzip compression
-  reactStrictMode: true,            // Catch bugs early
+  // Silences the webpack/turbopack mismatch error in Next.js 16
+  turbopack: {},
 
-  // Silence noisy build warnings about known packages
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-    }
-    return config
-  },
+  poweredByHeader: false,
+  compress: true,
+  reactStrictMode: true,
 }
 
 export default nextConfig
