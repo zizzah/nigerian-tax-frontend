@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { toast } from 'sonner'
 
-export default function LoginPage() {
+// ── Inner component that uses useSearchParams ─────────────────────────────────
+// Must be a separate component so it can be wrapped in Suspense
+
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
@@ -246,5 +249,40 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+  )
+}
+
+// ── Page export — LoginForm wrapped in Suspense ───────────────────────────────
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: 'clamp(24px, 5vw, 40px)',
+            boxShadow: '0 4px 24px rgba(15,14,11,0.08)',
+            border: '1px solid #ddd9cf',
+            width: '100%',
+            maxWidth: '420px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '300px',
+            gap: '10px',
+            color: '#9e9990',
+            fontSize: '14px',
+          }}
+        >
+          <Loader2 size={20} color="#c8952a" style={{ animation: 'spin 1s linear infinite' }} />
+          Loading...
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

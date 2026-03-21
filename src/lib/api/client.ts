@@ -13,15 +13,16 @@ function getBaseURL() {
 export const apiClient = axios.create({
   baseURL: getBaseURL(),
   headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
+  // Increased from 30s to 60s to handle Render free tier cold starts (can take 30-50s)
+  timeout: 60000,
   maxRedirects: 5,
   withCredentials: true,
 })
 
-// Add trailing slash + attach token to prevent FastAPI 307 redirects
+// Attach token + trailing slash normalization
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Add trailing slash to prevent FastAPI 307 redirects
+    // Normalize trailing slashes to prevent FastAPI 307 redirects
     if (config.url) {
       if (!config.url.includes('?') && !config.url.endsWith('/')) {
         config.url = config.url + '/'
@@ -31,7 +32,7 @@ apiClient.interceptors.request.use(
       }
     }
 
-    // Attach auth token
+    // Attach JWT token from cookie
     if (typeof document !== 'undefined') {
       const token = document.cookie
         .split('; ')
@@ -55,7 +56,8 @@ apiClient.interceptors.response.use(
       const isAuthEndpoint =
         error.config?.url?.includes('/auth/login') ||
         error.config?.url?.includes('/auth/register') ||
-        error.config?.url?.includes('/auth/forgot-password')
+        error.config?.url?.includes('/auth/forgot-password') ||
+        error.config?.url?.includes('/auth/change-password')
 
       if (!isAuthEndpoint && typeof document !== 'undefined') {
         document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
@@ -104,6 +106,10 @@ export function parseApiError(error: unknown): string {
           return String(e)
         })
         .join(', ')
+    }
+    // Handle timeout specifically
+    if (error.code === 'ECONNABORTED') {
+      return 'Request timed out. The server may be waking up — please try again in a moment.'
     }
   }
   return 'An unexpected error occurred'

@@ -250,24 +250,49 @@ function SettingsInner({
   }
 
   // ── Password change ─────────────────────────────────────────────────────────
-  const handleChangePassword = async () => {
-    setPwdError(null)
-    if (!pwdForm.current)                           { setPwdError('Enter your current password'); return }
-    if (pwdForm.next.length < 8)                    { setPwdError('New password must be at least 8 characters'); return }
-    if (pwdForm.next !== pwdForm.confirm)           { setPwdError('Passwords do not match'); return }
-    setPwdSaving(true)
-    try {
-      // Replace with your actual auth API call, e.g. authApi.changePassword(...)
-      await new Promise(res => setTimeout(res, 800)) // placeholder
-      toast.success('Password updated successfully!')
-      setPwdForm({ current: '', next: '', confirm: '' })
-    } catch {
-      setPwdError('Password change failed. Check your current password and try again.')
-    } finally {
-      setPwdSaving(false)
-    }
+// ============================================================================
+// REPLACE handleChangePassword in src/app/(dashboard)/settings/page.tsx
+// Find the existing handleChangePassword function and swap it with this one.
+// ============================================================================
+
+const handleChangePassword = async () => {
+  setPwdError(null)
+
+  // Client-side validation
+  if (!pwdForm.current) {
+    setPwdError('Enter your current password')
+    return
+  }
+  if (pwdForm.next.length < 8) {
+    setPwdError('New password must be at least 8 characters')
+    return
+  }
+  if (pwdForm.next !== pwdForm.confirm) {
+    setPwdError('Passwords do not match')
+    return
+  }
+  if (pwdForm.next === pwdForm.current) {
+    setPwdError('New password must be different from your current password')
+    return
   }
 
+  setPwdSaving(true)
+  try {
+    await apiClient.post('/auth/change-password', {
+      current_password: pwdForm.current,
+      new_password:     pwdForm.next,
+      confirm_password: pwdForm.confirm,
+    })
+    toast.success('Password updated successfully!')
+    setPwdForm({ current: '', next: '', confirm: '' })
+  } catch (err: unknown) {
+    const detail = (err as { response?: { data?: { detail?: string } } })
+      ?.response?.data?.detail
+    setPwdError(detail ?? 'Password change failed. Check your current password and try again.')
+  } finally {
+    setPwdSaving(false)
+  }
+}
   return (
     <>
       <div className="topbar">
