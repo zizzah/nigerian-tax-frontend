@@ -3,6 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { CommandPalette } from '@/components/commandPalette'
+
+
 import {
   LayoutDashboard,
   FileText,
@@ -12,6 +15,7 @@ import {
   FileScan,
   BarChart3,
   PieChart,
+  GitMerge,
   Bell,
   Target,
   Receipt,
@@ -38,6 +42,7 @@ const navSections = [
     items: [
       { label: 'Documents', href: '/documents', icon: FileScan,  badge: null },
       { label: 'Analytics', href: '/analytics', icon: BarChart3, badge: null },
+      { label: 'Reconcile', href: '/reconciliation', icon: GitMerge, badge: null },
       { label: 'Reports',  href: '/reports',  icon: PieChart,  badge: null },
       { label: 'Reminders', href: '/reminders', icon: Bell,     badge: null },
       { label: 'Targets',   href: '/targets',   icon: Target,   badge: null },
@@ -263,6 +268,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }
         }
       `}</style>
+      <CommandPalette />
+
     </>
   )
 }

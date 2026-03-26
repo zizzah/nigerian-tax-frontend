@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, Suspense } from 'react'
+import { use, useState, Suspense,useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Loader2, Printer, Send, Plus, Trash2, CheckCircle,
@@ -15,6 +15,7 @@ import { useBusiness }        from '@/lib/hooks/useBusiness'
 import { useInvoicePayments, useCreatePayment, useDeletePayment } from '@/lib/hooks/usePayments'
 import { invoicesApi }        from '@/lib/api/invoice'
 import type { InvoiceItem, PaymentMethod } from '@/lib/types'
+import { PaymentPredictionBadge } from '@/components/paymentPredictionBadge'
 import { toast } from 'sonner'
 
 const formatCurrency = (amount: string | number) => {

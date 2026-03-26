@@ -3,6 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { Plus, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useDashboard } from '@/lib/hooks/useDashboard'
+import  {AIInsightsPanel} from '@/components/aIInsightsPanel'
+import { OnboardingChecklist } from '@/components/onboardingChecklist'
+import { TaxCalendarWidget } from '@/components/taxCalendarWidget'
+
+
 
 const formatCurrency = (amount: number) => {
   // Use explicit ₦ prefix to avoid font glyph fallback issues
@@ -74,6 +79,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="content">
+        <OnboardingChecklist />
+
+        <AIInsightsPanel />
 
         {/* ── Stats Grid ── */}
         <div className="stats-grid">
@@ -153,6 +161,8 @@ export default function DashboardPage() {
 
         {/* ── Revenue Chart + Quick Actions ── */}
         <div className="grid-2">
+          <TaxCalendarWidget />
+
           <div className="card">
             <div className="card-header">
               <span className="card-title">Revenue Collected</span>

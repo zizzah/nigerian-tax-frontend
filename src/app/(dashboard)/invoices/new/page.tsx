@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Save, ArrowLeft, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Save, ArrowLeft, Loader2, Sparkles } from 'lucide-react'
 import { useCreateInvoice } from '@/lib/hooks/useInvoices'
 import { useCustomers } from '@/lib/hooks/useCustomers'
 import { useProducts } from '@/lib/hooks/useProducts'
 import type { InvoiceItemCreate } from '@/lib/types'
+import { NLPInvoiceCreator } from '@/components/nLPInvoiceCreator'
 
 interface LineItem {
   _id: number
@@ -17,6 +18,33 @@ interface LineItem {
   tax_rate: number
   discount_percent: number
 }
+
+interface ParsedItem {
+  description: string
+  quantity: number
+  unit_price: number
+  tax_rate: number
+}
+
+interface ParsedInvoice {
+  customer_name: string | null
+  customer_id: string | null
+  line_items: ParsedItem[]
+  notes: string | null
+  payment_terms: string | null
+  total_estimate: number
+  confidence: number
+  raw_interpretation: string
+}
+
+interface NLPInvoiceCreatorProps {
+  onParsed: (data: ParsedInvoice) => void
+  onClose: () => void
+}
+
+
+
+
 
 const today = () => new Date().toISOString().split('T')[0]
 const in30Days = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0] }
@@ -46,6 +74,10 @@ export default function NewInvoicePage() {
   const [notes, setNotes]               = useState('')
   const [paymentTerms, setPaymentTerms] = useState('')
   const [error, setError]               = useState<string | null>(null)
+  const [showNLP, setShowNLP] = useState(false)
+
+
+
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { _id: 1, description: '', quantity: 1, unit_price: 0, tax_rate: 7.5, discount_percent: 0 },
@@ -64,6 +96,24 @@ export default function NewInvoicePage() {
   const subtotal  = lineItems.reduce((sum, item) => { const base = item.quantity * item.unit_price; return sum + base - (base * item.discount_percent / 100) }, 0)
   const totalTax  = lineItems.reduce((sum, item) => { const base = item.quantity * item.unit_price; const ad = base - (base * item.discount_percent / 100); return sum + ad * (item.tax_rate / 100) }, 0)
   const total     = subtotal + totalTax
+
+
+const handleNLPParsed = (data: ParsedInvoice) => {
+  if (data.customer_id) setCustomerId(data.customer_id)
+  setLineItems(data.line_items.map((item, i) => ({
+    _id: Date.now() + i,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    tax_rate: item.tax_rate,
+    discount_percent: 0,
+  })))
+  if (data.notes) setNotes(data.notes)
+  if (data.payment_terms) setPaymentTerms(data.payment_terms)
+  setShowNLP(false)
+}
+
+
 
   const handleSubmit = async () => {
     setError(null)
@@ -96,6 +146,10 @@ export default function NewInvoicePage() {
           <h1 className="page-title">New Invoice</h1>
         </div>
         <div className="topbar-right">
+      <button onClick={() => setShowNLP(true)} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <Sparkles size={15} color="#c8952a" /> AI Create
+      </button>
+
           <button onClick={() => router.push('/invoices')} className="btn btn-outline btn-sm">Cancel</button>
           <button onClick={handleSubmit} disabled={createInvoice.isPending} className="btn btn-gold">
             {createInvoice.isPending ? <Loader2 size={15} className="spin" /> : <Save size={15} />}
@@ -341,6 +395,8 @@ export default function NewInvoicePage() {
           .item-row-3 { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
+      {showNLP && <NLPInvoiceCreator onParsed={handleNLPParsed} onClose={() => setShowNLP(false)} />}
+
     </>
   )
 }
