@@ -1,10 +1,11 @@
 'use client'
 
-import { use, useState, Suspense,useEffect } from 'react'
+import { use, useState, Suspense, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Loader2, Printer, Send, Plus, Trash2, CheckCircle,
   Download, Mail, Copy, X, Link, ExternalLink, MoreVertical,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   useInvoice, useFinalizeInvoice, useCancelInvoice,
@@ -14,6 +15,7 @@ import { useCustomer }        from '@/lib/hooks/useCustomers'
 import { useBusiness }        from '@/lib/hooks/useBusiness'
 import { useInvoicePayments, useCreatePayment, useDeletePayment } from '@/lib/hooks/usePayments'
 import { invoicesApi }        from '@/lib/api/invoice'
+import apiClient              from '@/lib/api/client'
 import type { InvoiceItem, PaymentMethod } from '@/lib/types'
 import { PaymentPredictionBadge } from '@/components/paymentPredictionBadge'
 import { toast } from 'sonner'
@@ -218,12 +220,23 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const [actionError, setActionError] = useState<string | null>(null)
   const [payLink,    setPayLink]    = useState<string | null>(null)
   const [payLinkLoading, setPayLinkLoading] = useState(false)
+  const [anomalies, setAnomalies]   = useState<{ type: string; severity: string; message: string }[]>([])
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: customer }   = useCustomer(invoice?.customer_id ?? '')
   const { data: business }   = useBusiness()
   const { data: paymentsData } = useInvoicePayments(id)
   const payments = paymentsData?.payments ?? []
+
+  // Fetch anomalies for DRAFT invoices
+  useEffect(() => {
+    if (invoice?.status === 'DRAFT' && id) {
+      apiClient
+        .get(`/insights/invoice-anomalies/${id}/`)
+        .then(r => setAnomalies(r.data.anomalies ?? []))
+        .catch(() => {}) // silent — non-critical feature
+    }
+  }, [id, invoice?.status])
 
   const primaryColor   = business?.primary_color   ?? '#c8952a'
   const secondaryColor = business?.secondary_color ?? '#1a6b4a'
@@ -309,7 +322,6 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
     </>
   )
 
-  // Primary action buttons (always visible)
   const primaryActions = (
     <>
       {isDraft && (
@@ -325,7 +337,6 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
     </>
   )
 
-  // Secondary actions in overflow menu on mobile
   const secondaryActions = [
     canEmail && { label: invoice.email_sent ? 'Resend Email' : 'Email Invoice', icon: <Mail size={14} />, onClick: () => { setMenuOpen(false); setModal('email') } },
     canPayLink && { label: payLinkLoading ? 'Generating…' : 'Payment Link', icon: <Link size={14} />, onClick: () => { setMenuOpen(false); handleGeneratePayLink() } },
@@ -345,7 +356,6 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <div className="topbar-actions">
           {primaryActions}
-          {/* More actions menu */}
           <div style={{ position: 'relative' }}>
             <button className="btn btn-outline" onClick={() => setMenuOpen(v => !v)} aria-label="More actions">
               <MoreVertical size={16} />
@@ -381,6 +391,24 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
           </div>
         )}
 
+        {/* Anomaly warnings for draft invoices */}
+        {anomalies.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            {anomalies.map((a, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                background: a.severity === 'warning' ? '#fffbeb' : '#f8fafc',
+                border: `1px solid ${a.severity === 'warning' ? '#fde68a' : '#e2e8f0'}`,
+                borderRadius: 10, padding: '12px 16px', marginBottom: 8,
+                borderLeft: `4px solid ${a.severity === 'warning' ? '#d97706' : '#64748b'}`,
+              }}>
+                <AlertTriangle size={16} color={a.severity === 'warning' ? '#d97706' : '#64748b'} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: 13, color: '#2c2a24', lineHeight: 1.6 }}>{a.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {payLink && (
           <div style={{ background: '#e8f4fd', border: '1px solid #b3d9f7', borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
@@ -407,6 +435,13 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
         {invoice.email_sent && (
           <div className="email-sent-badge">
             <Mail size={13} /> Emailed {invoice.email_sent_at ? `on ${formatDate(invoice.email_sent_at)}` : ''}
+          </div>
+        )}
+
+        {/* Payment Prediction Badge — shown for outstanding invoices */}
+        {canPay && (
+          <div style={{ marginBottom: 12 }}>
+            <PaymentPredictionBadge invoiceId={id} status={invoice.status} />
           </div>
         )}
 
@@ -527,7 +562,6 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
           <div className="invoice-footer"><p>Thank you for your business!</p></div>
         </div>
 
-        {/* Mobile quick actions bar */}
         {(canPay || canEmail) && (
           <div className="mobile-actions">
             {canPay && <button className="mobile-action-btn gold" onClick={() => setModal('payment')}><Plus size={16} /> Record Payment</button>}
@@ -588,7 +622,6 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
         .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
         .btn-outline:hover{background:var(--cream)}
         .btn:disabled{opacity:0.6;cursor:not-allowed}
-        /* Mobile quick actions bar */
         .mobile-actions{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:12px 16px;gap:10px;z-index:50;box-shadow:0 -4px 16px rgba(0,0,0,0.08)}
         .mobile-action-btn{flex:1;padding:13px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;border:none}
         .mobile-action-btn.gold{background:#c8952a;color:#0f0e0b}
@@ -620,7 +653,6 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
   )
 }
 
-// ── Page export wrapped in Suspense ───────────────────────────────────────────
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <Suspense fallback={

@@ -28,6 +28,7 @@ const AUTH_PREFIX = [
   '/targets',
   '/documents',
   '/settings',
+  '/reconciliation'
 ]
 
 export function middleware(request: NextRequest) {
