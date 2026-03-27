@@ -55,6 +55,15 @@ export interface DashboardStats {
   // Activity
   recent_invoices: DashboardInvoice[]
   recent_payments: DashboardPayment[]
+
+  // FIX: These fields are consumed by dashboard/page.tsx but were missing
+  // from the type definition. The analytics/dashboard endpoint returns them.
+  // dashboard/page.tsx accesses: stats?.health, stats?.net_profit, stats?.profit_margin
+  // analytics/page.tsx accesses: stats?.total_expenses, stats?.net_profit
+  health?: 'healthy' | 'stable' | 'breaking_even' | 'loss' | 'no_data'
+  net_profit?: number
+  profit_margin?: number
+  total_expenses?: number
 }
 
 export function useDashboard() {
@@ -64,6 +73,6 @@ export function useDashboard() {
       const res = await api.get('/analytics/dashboard')
       return res.data
     },
-    staleTime: 60_000, // refetch after 1 minute
+    staleTime: 60_000,
   })
 }

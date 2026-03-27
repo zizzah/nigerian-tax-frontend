@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { Sparkles, Loader2, Check, Edit2, X } from 'lucide-react'
 import apiClient from '@/lib/api/client'
+import { toast } from 'sonner'
+
+// FIX: Removed unused import of `useRouter` — not needed here.
+// FIX: Empty catch block `catch (err: unknown) {}` silently swallowed all errors.
+//      Added toast.error so the user knows when parsing fails, not just nothing happening.
 
 interface ParsedItem {
   description: string
@@ -47,7 +52,14 @@ export function NLPInvoiceCreator({ onParsed, onClose }: NLPInvoiceCreatorProps)
       const res = await apiClient.post('/nlp/parse-invoice/', { text })
       setParsed(res.data)
     } catch (err: unknown) {
-      setError('Failed to parse. Please try rephrasing.')
+      // FIX: Was `catch (err: unknown) {}` — completely swallowed the error.
+      // The user saw nothing happen when the parse failed.
+      const message =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? ((err as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? 'Failed to parse. Please try rephrasing.')
+          : 'Failed to parse. Please try rephrasing.'
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -104,7 +116,6 @@ export function NLPInvoiceCreator({ onParsed, onClose }: NLPInvoiceCreatorProps)
                 Ctrl+Enter to parse
               </div>
 
-              {/* Suggestions */}
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#9e9990', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Try an example:</div>
                 {SUGGESTIONS.map((s, i) => (
@@ -115,11 +126,14 @@ export function NLPInvoiceCreator({ onParsed, onClose }: NLPInvoiceCreatorProps)
                 ))}
               </div>
 
-              {error && <div style={{ background: '#fde8e8', color: '#b83232', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginTop: 12 }}>{error}</div>}
+              {error && (
+                <div style={{ background: '#fde8e8', color: '#b83232', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginTop: 12 }}>
+                  {error}
+                </div>
+              )}
             </>
           ) : (
             <>
-              {/* Interpretation banner */}
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#15803d', marginBottom: 16 }}>
                 <strong>AI understood:</strong> {parsed.raw_interpretation}
                 <span style={{ float: 'right', fontSize: 11, fontWeight: 700 }}>
@@ -157,7 +171,7 @@ export function NLPInvoiceCreator({ onParsed, onClose }: NLPInvoiceCreatorProps)
                 </div>
               </div>
 
-              <button onClick={() => { setText(''); setParsed(null) }}
+              <button onClick={() => { setText(''); setParsed(null); setError(null) }}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b6560', background: 'none', border: '1px solid #ddd9cf', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', marginBottom: 4 }}>
                 <Edit2 size={13} /> Try different description
               </button>

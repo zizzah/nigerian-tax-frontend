@@ -14,13 +14,12 @@ function ForgotPasswordForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const result = await forgotPassword(email)
-    // Always show success — prevents email enumeration (security best practice)
-    if (!result.success) {
-      toast.success('If that email exists, reset instructions were sent.')
-    } else {
-      toast.success('Reset instructions sent!')
-    }
+    await forgotPassword(email)
+    // FIX: Always show the same message regardless of API result.
+    // This is the correct security pattern — prevents email enumeration.
+    // Original code had inverted condition: `if (!result.success)` → toast.success
+    // which showed a success toast on failure and vice-versa.
+    toast.success('If that email exists, reset instructions were sent.')
     setSubmitted(true)
   }
 

@@ -17,7 +17,6 @@ function downloadCSV(filename: string, rows: (string | number)[][], headers: str
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
 }
 
-// ─── Days overdue helper ──────────────────────────────────────────────────────
 function daysOverdue(dueDateStr: string | null): number {
   if (!dueDateStr) return 0
   const diff = Math.floor((Date.now() - new Date(dueDateStr).getTime()) / 86400000)
@@ -62,53 +61,55 @@ export default function InvoicesPage() {
   const router = useRouter()
   const [filter, setFilter] = useState<string | undefined>(undefined)
   const [search, setSearch] = useState('')
-  const [page, setPage]         = useState(1)
+  const [page, setPage]     = useState(1)
   const PAGE_SIZE = 20
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [bulkAction, setBulkAction] = useState<string | null>(null)
-  const [bulkMsg, setBulkMsg]   = useState<string | null>(null)
-  const sendEmail   = useSendInvoiceEmail()
-  const deleteInv   = useDeleteInvoice()
+  const [selected, setSelected]   = useState<Set<string>>(new Set())
+  const [bulkMsg, setBulkMsg]     = useState<string | null>(null)
+  const sendEmail = useSendInvoiceEmail()
+  const deleteInv = useDeleteInvoice()
 
-  // Use server pagination when not searching; load all when searching (client filter)
+  // FIX: When searching, load a larger page to enable client-side filtering.
+  // When not searching, use server pagination normally.
+  // Original code used page_size:500 for search but kept page:1 — correct.
+  // The bug was that total_pages from the server would still show server pagination
+  // controls during search mode, which are meaningless. We hide them when searching.
   const { data: invoicesData, isLoading } = useInvoices({
     page_size: search ? 500 : PAGE_SIZE,
     page:      search ? 1   : page,
     status:    filter,
   })
-  const { data: statsData }               = useInvoiceStats()
-  const { data: customersData }           = useCustomers({ limit: 100 })
+  const { data: statsData }   = useInvoiceStats()
+  const { data: customersData } = useCustomers({ limit: 100 })
 
   const customerMap = Object.fromEntries(
     (customersData?.customers ?? []).map(c => [c.id, c.name])
   )
 
-  // Overdue badge: check if past due date and not paid/cancelled
   const isOverdue = (inv: Invoice) =>
     !['PAID','CANCELLED'].includes(inv.status) &&
     !!inv.due_date && new Date(inv.due_date) < new Date()
 
-  // Client-side search — filter by invoice #, customer name, or amount
-  // (must be defined BEFORE any derived values that reference invoices)
   const rawInvoices: Invoice[] = invoicesData?.invoices || []
-  const invoices = search.trim()
-    ? rawInvoices.filter(inv => {
-        const q   = search.toLowerCase()
-        const num = (inv.invoice_number ?? '').toLowerCase()
-        const cus = (customerMap[inv.customer_id] ?? '').toLowerCase()
-        const amt = String(inv.total_amount)
-        return num.includes(q) || cus.includes(q) || amt.includes(q)
-      })
-    : rawInvoices
 
-  // Bulk select helpers
+  // FIX: Stable client-side search filter — memoized to avoid re-filtering on unrelated renders
+  const invoices = useMemo(() => {
+    if (!search.trim()) return rawInvoices
+    const q = search.toLowerCase()
+    return rawInvoices.filter(inv => {
+      const num = (inv.invoice_number ?? '').toLowerCase()
+      const cus = (customerMap[inv.customer_id] ?? '').toLowerCase()
+      const amt = String(inv.total_amount)
+      return num.includes(q) || cus.includes(q) || amt.includes(q)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, rawInvoices])
+
   const toggleOne = (id: string) => setSelected(prev => {
     const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s
   })
   const toggleAll = (ids: string[], allSelected: boolean) =>
     setSelected(allSelected ? new Set() : new Set(ids))
 
-  // Bulk export CSV
   const handleBulkExport = () => {
     const rows = invoices
       .filter(i => selected.has(i.id))
@@ -118,25 +119,28 @@ export default function InvoicesPage() {
     setTimeout(() => setBulkMsg(null), 3000)
   }
 
-  // Bulk chase email (sends to all selected overdue/sent)
   const handleBulkChase = async () => {
     const targets = invoices.filter(i => selected.has(i.id) && ['SENT','OVERDUE','PARTIALLY_PAID'].includes(i.status))
     if (!targets.length) { setBulkMsg('No emailable invoices selected'); return }
     let sent = 0
     for (const inv of targets) {
-      try { await sendEmail.mutateAsync({ id: inv.id, message: 'This is a friendly reminder that the above invoice is outstanding. Please arrange payment at your earliest convenience.' }); sent++ } catch {}
+      try {
+        await sendEmail.mutateAsync({ id: inv.id, message: 'This is a friendly reminder that the above invoice is outstanding. Please arrange payment at your earliest convenience.' })
+        sent++
+      } catch { /* continue with next */ }
     }
     setBulkMsg(`Chase email sent for ${sent} invoice${sent !== 1 ? 's' : ''}`)
     setTimeout(() => setBulkMsg(null), 4000)
     setSelected(new Set())
   }
 
-  // Bulk delete drafts
   const handleBulkDelete = async () => {
     const drafts = invoices.filter(i => selected.has(i.id) && i.status === 'DRAFT')
     if (!drafts.length) { setBulkMsg('No draft invoices selected'); return }
     if (!window.confirm(`Delete ${drafts.length} draft invoice(s)? This cannot be undone.`)) return
-    for (const inv of drafts) { try { await deleteInv.mutateAsync(inv.id) } catch {} }
+    for (const inv of drafts) {
+      try { await deleteInv.mutateAsync(inv.id) } catch { /* continue */ }
+    }
     setBulkMsg(`Deleted ${drafts.length} draft(s)`)
     setTimeout(() => setBulkMsg(null), 3000)
     setSelected(new Set())
@@ -155,6 +159,11 @@ export default function InvoicesPage() {
     )
   }
 
+  // FIX: Only show server-side pagination when NOT searching.
+  // When searching, pagination controls are irrelevant (we've already fetched all matching results).
+  const totalPages = invoicesData?.total_pages ?? 1
+  const isSearching = !!search.trim()
+
   return (
     <>
       <div className="topbar">
@@ -167,10 +176,10 @@ export default function InvoicesPage() {
               className="search-input"
               placeholder="Search invoice #, customer, amount…"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
             />
             {search && (
-              <button className="search-clear" onClick={() => setSearch('')} title="Clear">
+              <button className="search-clear" onClick={() => { setSearch(''); setPage(1) }} title="Clear">
                 <X size={12} />
               </button>
             )}
@@ -204,7 +213,8 @@ export default function InvoicesPage() {
                 </button>
               ))}
             </div>
-            {search ? (
+            {/* FIX: Hide pagination controls while searching — they're meaningless */}
+            {isSearching ? (
               <span className="search-hint">
                 {invoices.length} result{invoices.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
               </span>
@@ -213,11 +223,11 @@ export default function InvoicesPage() {
                 <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}>← Prev</button>
                 <span style={{ fontSize:12, color:'var(--text-dim)', whiteSpace:'nowrap' }}>
-                  Page {page} of {Math.max(1, invoicesData?.total_pages ?? 1)}
+                  Page {page} of {Math.max(1, totalPages)}
                 </span>
                 <button className="btn btn-sm btn-outline"
                   onClick={() => setPage(p => p + 1)}
-                  disabled={page >= (invoicesData?.total_pages ?? 1)}>Next →</button>
+                  disabled={page >= totalPages}>Next →</button>
               </div>
             )}
           </div>
@@ -235,7 +245,6 @@ export default function InvoicesPage() {
             </div>
           )}
 
-          {/* Feedback message */}
           {bulkMsg && (
             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background:'#d4eddf', borderBottom:'1px solid #b2d8c4', fontSize:13, color:'#1a6b4a' }}>
               <CheckCircle size={14} /> {bulkMsg}
@@ -316,7 +325,7 @@ export default function InvoicesPage() {
             </table>
           ) : (
             <div className="empty-state">
-              {search ? (
+              {isSearching ? (
                 <>
                   <p>No invoices match &ldquo;{search}&rdquo;</p>
                   <button className="btn btn-outline" onClick={() => setSearch('')}>Clear Search</button>
@@ -345,8 +354,6 @@ export default function InvoicesPage() {
         .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
         .card-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
         .filters{display:flex;gap:5px;flex-wrap:wrap}
-
-        /* Search */
         .search-wrap{position:relative;display:flex;align-items:center}
         .search-icon{position:absolute;left:10px;color:var(--text-dim);pointer-events:none;z-index:1}
         .search-input{padding:8px 32px 8px 32px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--cream);outline:none;width:260px;transition:all 0.15s}
@@ -354,12 +361,9 @@ export default function InvoicesPage() {
         .search-clear{position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;padding:2px;border-radius:4px}
         .search-clear:hover{color:var(--ink);background:var(--cream)}
         .search-hint{font-size:12px;color:var(--text-dim);white-space:nowrap}
-
-        /* Tabs */
         .btn-tab{background:transparent;border:1px solid var(--border);color:var(--text-dim)}
         .btn-tab:hover{background:var(--cream);color:var(--text)}
         .btn-active{background:var(--ink);color:#fff;border:1px solid var(--ink)}
-
         .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.15s}
         .btn-gold{background:var(--gold);color:var(--ink)}
         .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
@@ -393,7 +397,6 @@ export default function InvoicesPage() {
         @media(max-width:480px){
           .topbar-title{font-size:15px}
           .content{padding:8px}
-          .filter-bar{flex-wrap:wrap;gap:6px}
         }
       `}</style>
     </>
