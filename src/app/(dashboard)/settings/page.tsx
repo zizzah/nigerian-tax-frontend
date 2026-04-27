@@ -96,8 +96,8 @@ function buildFormDefaults(business?: import('@/lib/types').Business | null) {
     city:            business?.city            ?? '',
     state:           business?.state           ?? '',
     invoice_prefix:  business?.invoice_prefix  ?? 'INV',
-    primary_color:   business?.primary_color   ?? '#c8952a',
-    secondary_color: business?.secondary_color ?? '#1a6b4a',
+    primary_color:   business?.primary_color   ?? '#0f0e0b',
+    secondary_color: business?.secondary_color ?? '#c8952a',
   }
 }
 
