@@ -93,7 +93,7 @@ function PayPageInner() {
     }
   }, [data, token, paystackReady])
 
-  const gold = data?.business?.primary_color || '#c8952a'
+  const gold = data?.business?.primary_color || '#0f0e0b'
   const biz  = data?.business; const inv = data?.invoice; const cust = data?.customer
 
   if (loading) return (

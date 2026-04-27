@@ -238,8 +238,8 @@ function InvoiceDetailInner({ params }: { params: Promise<{ id: string }> }) {
     }
   }, [id, invoice?.status])
 
-  const primaryColor   = business?.primary_color   ?? '#c8952a'
-  const secondaryColor = business?.secondary_color ?? '#1a6b4a'
+  const primaryColor   = business?.primary_color   ?? '#0f0e0b'
+  const secondaryColor = business?.secondary_color ?? '#c8952a'
 
   const finalizeInvoice  = useFinalizeInvoice()
   const cancelInvoice    = useCancelInvoice()
