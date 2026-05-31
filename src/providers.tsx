@@ -11,7 +11,7 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Warm up Render backend — fires silently on first load
     // Prevents the 30-50 second cold start delay for first real request
-    const backendBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')
+    const backendBase =   process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')
       ?? 'https://nigerian-tax-compliance-backend.onrender.com'
     fetch(`${backendBase}/alive`, { method: 'GET' }).catch(() => {})
 

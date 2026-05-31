@@ -1,31 +1,37 @@
+// lib/hooks/useDocuments.ts
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { documentsApi } from '@/lib/api/documents'
 
 export const DOCUMENT_KEYS = {
-  all: ['documents'] as const,
-  list: (params?: object) => [...DOCUMENT_KEYS.all, 'list', params] as const,
-  detail: (id: string) => [...DOCUMENT_KEYS.all, 'detail', id] as const,
+  receipts:      ['documents', 'receipts']      as const,
+  bankStatements:['documents', 'bank-statements'] as const,
+  detail: (type: string, id: string) => ['documents', type, id] as const,
 }
 
-export function useDocuments(params?: {
+export function useReceipts(params?: {
   skip?: number
   limit?: number
-  document_type?: string
   processing_status?: string
   start_date?: string
   end_date?: string
 }) {
   return useQuery({
-    queryKey: DOCUMENT_KEYS.list(params),
-    queryFn: () => documentsApi.list(params),
+    queryKey: [...DOCUMENT_KEYS.receipts, params],
+    queryFn:  () => documentsApi.listReceipts(params),
   })
 }
 
-export function useDocument(id: string) {
+export function useBankStatements(params?: {
+  skip?: number
+  limit?: number
+  processing_status?: string
+  start_date?: string
+  end_date?: string
+}) {
   return useQuery({
-    queryKey: DOCUMENT_KEYS.detail(id),
-    queryFn: () => documentsApi.get(id),
-    enabled: !!id,
+    queryKey: [...DOCUMENT_KEYS.bankStatements, params],
+    queryFn:  () => documentsApi.listBankStatements(params),
   })
 }
 
@@ -37,20 +43,10 @@ export function useUploadDocument() {
       documentType,
     }: {
       file: File
-      documentType: 'RECEIPT' | 'INVOICE' | 'BILL' | 'QUOTE' | 'OTHER'
+      documentType: 'RECEIPT' | 'INVOICE' | 'BANK_STATEMENT' | 'TAX_DOCUMENT' | 'OTHER'
     }) => documentsApi.upload(file, documentType),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DOCUMENT_KEYS.all })
-    },
-  })
-}
-
-export function useReprocessDocument() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => documentsApi.reprocess(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DOCUMENT_KEYS.all })
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
     },
   })
 }
@@ -60,7 +56,10 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: (id: string) => documentsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DOCUMENT_KEYS.all })
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
     },
   })
 }
+
+// useReprocessDocument removed — reprocessing is not supported.
+// Show UI message directing user to re-upload.

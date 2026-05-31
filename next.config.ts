@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next'
 
-const BACKEND = process.env.BACKEND_URL || 'https://nigerian-tax-compliance-backend.onrender.com'
+const BACKEND =
+  process.env.BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000'   // ← hardcoded fallback, never undefined
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -26,9 +29,7 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Silences the webpack/turbopack mismatch error in Next.js 16
   turbopack: {},
-
   poweredByHeader: false,
   compress: true,
   reactStrictMode: true,
